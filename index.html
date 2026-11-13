@@ -7,37 +7,63 @@
 <link rel="icon" href="favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="favicon.png">
 <link rel="shortcut icon" href="favicon.png" type="image/png">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Figtree:wght@400;500;600;700&family=Tiro+Devanagari+Hindi&family=Hind:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
 <header class="header">
-  <div class="header-logo">
+  <div class="header-logo" onclick="showPanchang()" title="Home">
     <div class="mandala">
       <img src="favicon.png" alt="Simple Panchang" class="header-app-icon">
     </div>
     <div class="header-logo-text">
       <span class="samaj">Simple Panchang</span>
-      <span class="tagline">by ABHISHEK DADHICH</span>
     </div>
   </div>
-  <div class="header-avatar" id="header-avatar" title="Profile" aria-label="Profile" role="button" tabindex="0" onclick="openProfileModal()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openProfileModal();}">
+  <div class="header-actions">
+    <button class="header-settings-btn" onclick="toggleSettings()" title="Settings" aria-label="Settings" aria-haspopup="true">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+    </button>
+    <div class="header-avatar" id="header-avatar" title="Profile" aria-label="Profile" role="button" tabindex="0" onclick="openProfileModal()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openProfileModal();}">
     <img id="header-avatar-img" class="header-avatar-img" alt="Profile" style="display:none;">
     <svg id="header-avatar-svg" viewBox="0 0 24 24" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
       <circle cx="12" cy="7" r="4"/>
     </svg>
   </div>
+    <div class="settings-menu" id="settings-menu">
+      <button class="settings-item" onclick="closeSettings();showAccountSettings()">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        Account Settings
+      </button>
+      <button class="settings-item" onclick="closeSettings();showAppSettings()">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        App Settings
+      </button>
+      <button class="settings-item" onclick="closeSettings();spStartTour()">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+        App Tour
+      </button>
+      <button class="settings-item" onclick="closeSettings();showHelp()">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Help
+      </button>
+      <button class="settings-item" onclick="closeSettings();showContactUs()">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+        Contact Us
+      </button>
+      <button class="settings-item" onclick="closeSettings();showAbout()">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        About Us
+      </button>
+    </div>
+  </div>
 </header>
 
 <div class="pages">
   <!-- ── HINDU VAIDIK PANCHANG PAGE (always forced to Hindi — excluded from global language sweep) ── -->
   <div class="about-page panchang-noswee" id="page-panchang" data-no-i18n-sweep="1" style="display:block;" lang="hi">
-    <div class="about-banner">
-      <div class="ab-title">हिंदू वैदिक पंचांग</div>
-      <div class="ab-sub" id="pch-date-sub">आज की तिथि, नक्षत्र व शुभ-अशुभ मुहूर्त</div>
-    </div>
     <div class="about-body">
       <div id="pch-gps-loading" style="display:none; padding:14px 2px; font-size:13px; color:var(--ink-soft); align-items:center; gap:8px;">
         📍 आपका स्थान पता किया जा रहा है…
@@ -62,7 +88,7 @@
             <button class="pch-loc-btn" onclick="pchShowManualEntry()">✍️ स्थान का नाम लिखें</button>
           </div>
           <div id="pch-manual-entry" style="display:none; margin-top:14px;">
-            <input type="text" id="pch-manual-input" placeholder="शहर / कस्बे का नाम लिखें (जैसे Beawar, Ajmer)" style="width:100%; padding:12px 14px; border-radius:14px; border:1px solid var(--border); font-family:'DM Sans',sans-serif; font-size:14px; background:rgba(255,255,255,0.7);">
+            <input type="text" id="pch-manual-input" placeholder="शहर / कस्बे का नाम लिखें (जैसे Beawar, Ajmer)" style="width:100%; padding:12px 14px; border-radius:14px; border:1px solid var(--border); font-family:'Figtree','Hind',sans-serif; font-size:14px; background:rgba(255,255,255,0.7);">
             <button class="pch-loc-btn" style="margin-top:8px;" onclick="pchSearchManualLocation()">स्थान खोजें</button>
           </div>
 
@@ -73,8 +99,8 @@
           <div id="pch-datetime-block" style="display:none; margin-top:14px; padding-top:14px; border-top:1px dashed var(--border);">
             <div style="font-size:11.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:8px;">दिनांक व समय (Date &amp; Time)</div>
             <div style="display:flex; gap:8px;">
-              <input type="date" id="pch-dt-date" style="flex:1.2; min-width:0; padding:10px 10px; border-radius:12px; border:1px solid var(--border); font-family:'DM Sans',sans-serif; font-size:13px; background:rgba(255,255,255,0.7); color:var(--ink);">
-              <input type="time" id="pch-dt-time" style="flex:1; min-width:0; padding:10px 10px; border-radius:12px; border:1px solid var(--border); font-family:'DM Sans',sans-serif; font-size:13px; background:rgba(255,255,255,0.7); color:var(--ink);">
+              <input type="date" id="pch-dt-date" style="flex:1.2; min-width:0; padding:10px 10px; border-radius:12px; border:1px solid var(--border); font-family:'Figtree','Hind',sans-serif; font-size:13px; background:rgba(255,255,255,0.7); color:var(--ink);">
+              <input type="time" id="pch-dt-time" style="flex:1; min-width:0; padding:10px 10px; border-radius:12px; border:1px solid var(--border); font-family:'Figtree','Hind',sans-serif; font-size:13px; background:rgba(255,255,255,0.7); color:var(--ink);">
             </div>
             <div style="display:flex; gap:8px; margin-top:8px;">
               <button class="pch-loc-btn" style="flex:1;" onclick="pchApplyDateTimeOnly()">✅ इसी समय हेतु लागू करें</button>
@@ -97,11 +123,13 @@
           <div class="about-card">
             <div class="pch-grid">
               <div class="pch-item"><div class="pch-label">दिनांक</div><div class="pch-value" id="pch-date-summary"></div></div>
+              <div class="pch-item"><div class="pch-label">समय</div><div class="pch-value" id="pch-time-summary"></div></div>
               <div class="pch-item"><div class="pch-label">विक्रम संवत</div><div class="pch-value" id="pch-tatva-samvat"></div></div>
-              <div class="pch-item"><div class="pch-label">पूर्णिमांत मास</div><div class="pch-value" id="pch-purnimant-masa"></div></div>
-              <div class="pch-item"><div class="pch-label">पक्ष</div><div class="pch-value" id="pch-paksha"></div></div>
-              <div class="pch-item"><div class="pch-label">तिथि</div><div class="pch-value" id="pch-tithi"></div></div>
-              <div class="pch-item"><div class="pch-label">ऋतु</div><div class="pch-value" id="pch-ritu"></div></div>
+              <div class="pch-item pch-tap" data-eld="masa" role="button" tabindex="0" aria-label="पूर्णिमांत मास — विस्तृत समय-रेखा देखें"><div class="pch-label">पूर्णिमांत मास</div><div class="pch-value" id="pch-purnimant-masa"></div></div>
+              <div class="pch-item pch-tap" data-eld="paksha" role="button" tabindex="0" aria-label="पक्ष — विस्तृत समय-रेखा देखें"><div class="pch-label">पक्ष</div><div class="pch-value" id="pch-paksha"></div></div>
+              <div class="pch-item pch-tap" data-eld="tithi" role="button" tabindex="0" aria-label="तिथि — विस्तृत समय-रेखा देखें"><div class="pch-label">तिथि</div><div class="pch-value" id="pch-tithi"></div></div>
+              <div class="pch-item"><div class="pch-label">अयन</div><div class="pch-value" id="pch-ayan"></div></div>
+              <div class="pch-item pch-tap" data-eld="ritu" role="button" tabindex="0" aria-label="ऋतु — विस्तृत समय-रेखा देखें"><div class="pch-label">ऋतु</div><div class="pch-value" id="pch-ritu"></div></div>
             </div>
           </div>
         </div>
@@ -111,14 +139,14 @@
           <div class="about-section-title">पंचांग तत्व <span id="pch-elements-live-label" style="font-weight:400; font-size:11px; color:var(--ink-soft); text-transform:none; letter-spacing:normal;">(अभी के समय अनुसार — स्वतः अपडेट होता है)</span></div>
           <div class="about-card">
             <div class="pch-grid">
-              <div class="pch-item"><div class="pch-label">नक्षत्र</div><div class="pch-value" id="pch-nakshatra"></div></div>
-              <div class="pch-item"><div class="pch-label">योग</div><div class="pch-value" id="pch-yoga"></div></div>
-              <div class="pch-item"><div class="pch-label">करण</div><div class="pch-value" id="pch-karana"></div></div>
+              <div class="pch-item pch-tap" data-eld="nakshatra" role="button" tabindex="0" aria-label="नक्षत्र — विस्तृत समय-रेखा देखें"><div class="pch-label">नक्षत्र</div><div class="pch-value" id="pch-nakshatra"></div></div>
+              <div class="pch-item pch-tap" data-eld="yoga" role="button" tabindex="0" aria-label="योग — विस्तृत समय-रेखा देखें"><div class="pch-label">योग</div><div class="pch-value" id="pch-yoga"></div></div>
+              <div class="pch-item pch-tap" data-eld="karana" role="button" tabindex="0" aria-label="करण — विस्तृत समय-रेखा देखें"><div class="pch-label">करण</div><div class="pch-value" id="pch-karana"></div></div>
               <div class="pch-item pch-bad"><div class="pch-label">दिशा शूल</div><div class="pch-value" id="pch-disha-shool"></div></div>
-              <div class="pch-item"><div class="pch-label">चंद्र राशि</div><div class="pch-value" id="pch-chandra-rashi"></div></div>
-              <div class="pch-item"><div class="pch-label">सूर्य राशि</div><div class="pch-value" id="pch-surya-rashi"></div></div>
-              <div class="pch-item"><div class="pch-label">चंद्रबल</div><div class="pch-value" id="pch-chandrabalam"></div></div>
-              <div class="pch-item"><div class="pch-label">ताराबल</div><div class="pch-value" id="pch-tarabalam"></div></div>
+              <div class="pch-item pch-tap" data-eld="chandra" role="button" tabindex="0" aria-label="चंद्र राशि — विस्तृत समय-रेखा देखें"><div class="pch-label">चंद्र राशि</div><div class="pch-value" id="pch-chandra-rashi"></div></div>
+              <div class="pch-item pch-tap" data-eld="surya" role="button" tabindex="0" aria-label="सूर्य राशि — विस्तृत समय-रेखा देखें"><div class="pch-label">सूर्य राशि</div><div class="pch-value" id="pch-surya-rashi"></div></div>
+              <div class="pch-item pch-tap" data-eld="chandrabal" role="button" tabindex="0" aria-label="चंद्रबल — विस्तृत समय-रेखा देखें"><div class="pch-label">चंद्रबल</div><div class="pch-value" id="pch-chandrabalam"></div></div>
+              <div class="pch-item pch-tap" data-eld="tarabal" role="button" tabindex="0" aria-label="ताराबल — विस्तृत समय-रेखा देखें"><div class="pch-label">ताराबल</div><div class="pch-value" id="pch-tarabalam"></div></div>
             </div>
           </div>
         </div>
@@ -133,33 +161,14 @@
 
         <!-- Choghadiya -->
         <div class="about-section">
-          <div class="about-section-title pch-chogh-title-row">
-            <span id="pch-chogh-title">चौघड़िया</span>
-            <span class="pch-chogh-daynight-wrap">
-              <span id="pch-chogh-daynight-label" class="pch-chogh-daynight-label"></span>
-              <label class="theme-switch" title="दिन / रात्रि चौघड़िया बदलें">
-              <input type="checkbox" class="theme-switch__checkbox" id="pch-chogh-toggle">
-              <div class="theme-switch__container">
-                <div class="theme-switch__clouds"></div>
-                <div class="theme-switch__stars-container">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 55" fill="none">
-                    <path fill-rule="evenodd" clip-rule="evenodd" d="M135.831 3.00688C135.055 3.85027 134.111 4.29946 133 4.35447C134.111 4.40947 135.055 4.85867 135.831 5.71123C136.607 6.55462 136.996 7.56303 136.996 8.72727C136.996 7.95722 137.172 7.25134 137.525 6.59129C137.886 5.93124 138.372 5.39954 138.98 5.00535C139.598 4.60199 140.268 4.39114 141 4.35447C139.88 4.2903 138.936 3.85027 138.16 3.00688C137.384 2.16348 136.996 1.16425 136.996 0C136.996 1.16425 136.607 2.16348 135.831 3.00688ZM31 23.3545C32.1114 23.2995 33.0551 22.8503 33.8313 22.0069C34.6075 21.1635 34.9956 20.1642 34.9956 19C34.9956 20.1642 35.3837 21.1635 36.1599 22.0069C36.9361 22.8503 37.8798 23.2903 39 23.3545C38.2679 23.3911 37.5976 23.602 36.9802 24.0053C36.3716 24.3995 35.8864 24.9312 35.5248 25.5913C35.172 26.2513 34.9956 26.9572 34.9956 27.7273C34.9956 26.563 34.6075 25.5546 33.8313 24.7112C33.0551 23.8587 32.1114 23.4095 31 23.3545ZM0 36.3545C1.11136 36.2995 2.05513 35.8503 2.83131 35.0069C3.6075 34.1635 3.99559 33.1642 3.99559 32C3.99559 33.1642 4.38368 34.1635 5.15987 35.0069C5.93605 35.8503 6.87982 36.2903 8 36.3545C7.26792 36.3911 6.59757 36.602 5.98015 37.0053C5.37155 37.3995 4.88644 37.9312 4.52481 38.5913C4.172 39.2513 3.99559 39.9572 3.99559 40.7273C3.99559 39.563 3.6075 38.5546 2.83131 37.7112C2.05513 36.8587 1.11136 36.4095 0 36.3545ZM56.8313 24.0069C56.0551 24.8503 55.1114 25.2995 54 25.3545C55.1114 25.4095 56.0551 25.8587 56.8313 26.7112C57.6075 27.5546 57.9956 28.563 57.9956 29.7273C57.9956 28.9572 58.172 28.2513 58.5248 27.5913C58.8864 26.9312 59.3716 26.3995 59.9802 26.0053C60.5976 25.602 61.2679 25.3911 62 25.3545C60.8798 25.2903 59.9361 24.8503 59.1599 24.0069C58.3837 23.1635 57.9956 22.1642 57.9956 21C57.9956 22.1642 57.6075 23.1635 56.8313 24.0069ZM81 25.3545C82.1114 25.2995 83.0551 24.8503 83.8313 24.0069C84.6075 23.1635 84.9956 22.1642 84.9956 21C84.9956 22.1642 85.3837 23.1635 86.1599 24.0069C86.9361 24.8503 87.8798 25.2903 89 25.3545C88.2679 25.3911 87.5976 25.602 86.9802 26.0053C86.3716 26.3995 85.8864 26.9312 85.5248 27.5913C85.172 28.2513 84.9956 28.9572 84.9956 29.7273C84.9956 28.563 84.6075 27.5546 83.8313 26.7112C83.0551 25.8587 82.1114 25.4095 81 25.3545ZM136 36.3545C137.111 36.2995 138.055 35.8503 138.831 35.0069C139.607 34.1635 139.996 33.1642 139.996 32C139.996 33.1642 140.384 34.1635 141.16 35.0069C141.936 35.8503 142.88 36.2903 144 36.3545C143.268 36.3911 142.598 36.602 141.98 37.0053C141.372 37.3995 140.886 37.9312 140.525 38.5913C140.172 39.2513 139.996 39.9572 139.996 40.7273C139.996 39.563 139.607 38.5546 138.831 37.7112C138.055 36.8587 137.111 36.4095 136 36.3545ZM101.831 49.0069C101.055 49.8503 100.111 50.2995 99 50.3545C100.111 50.4095 101.055 50.8587 101.831 51.7112C102.607 52.5546 102.996 53.563 102.996 54.7273C102.996 53.9572 103.172 53.2513 103.525 52.5913C103.886 51.9312 104.372 51.3995 104.98 51.0053C105.598 50.602 106.268 50.3911 107 50.3545C105.88 50.2903 104.936 49.8503 104.16 49.0069C103.384 48.1635 102.996 47.1642 102.996 46C102.996 47.1642 102.607 48.1635 101.831 49.0069Z" fill="currentColor"></path>
-                  </svg>
-                </div>
-                <div class="theme-switch__circle-container">
-                  <div class="theme-switch__sun-moon-container">
-                    <div class="theme-switch__moon">
-                      <div class="theme-switch__spot"></div>
-                      <div class="theme-switch__spot"></div>
-                      <div class="theme-switch__spot"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </label>
-            </span>
+          <div class="about-section-title"><span id="pch-chogh-title">चौघड़िया</span></div>
+          <div class="about-card">
+            <div id="pch-choghadiya-list"></div>
+            <button class="vrat-viewmore-btn" onclick="showChoghadiyaFull()">
+              सम्पूर्ण दिन एवं रात का चौघड़िया देखें
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+            </button>
           </div>
-          <div class="about-card" id="pch-choghadiya-list"></div>
         </div>
 
         <!-- Sun-Moon Time -->
@@ -224,7 +233,7 @@
       </div>
 
       <div class="about-footer">
-        <p style="font-size:12px; opacity:0.85; line-height:1.6; text-align:center; margin-bottom:10px;">Developed by<br><strong>ABHISHEK DADHICH</strong><br>Founder &amp; Director<br>Trovato Communications Private Limited<br>Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></p>
+        <p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-by">Developed by</span><br><strong class="dev-company">Trovato Communications Private Limited</strong><br><span class="dev-email-line">Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></span></p>
         <p style="font-size:11px; opacity:0.75; line-height:1.5; text-align:justify;">Disclaimer: इस एप्लिकेशन में दिया गया पंचांग मात्र अनुमान है, जिसकी सटीकता आपकी वर्तमान GPS location और वर्तमान समय पर निर्भर करती है। किसी भी महत्वपूर्ण उपयोग से पहले कृपया किसी प्रामाणिक पंडित/ज्योतिषी से परामर्श अवश्य करें। व्रत त्योहार एवं सार्वजनिक अवकाश सूची सामान्यतः सटीक हैं, एवं विभिन्न पोर्टल से संकलित की गई है, इसलिए कृपया किसी प्रकार की निर्भरता या उपयोग से पूर्व आधिकारिक व अद्यतन सूचना से पुष्टि अवश्य करें।</p>
       </div>
 
@@ -238,7 +247,7 @@
       <div style="font-size:12.5px; color:var(--ink-soft); margin-bottom:16px; line-height:1.5;">आपकी जन्म राशि व जन्म नक्षत्र, आपकी जन्म तिथि व समय से स्वतः निकाले जाएंगे। यह विवरण आपकी प्रोफ़ाइल में सुरक्षित रहेगा, दोबारा नहीं पूछा जाएगा।</div>
 
       <label style="display:block; font-size:12.5px; font-weight:600; margin-bottom:4px;">जन्म तिथि</label>
-      <input type="date" id="pch-birth-date" style="width:100%; padding:9px 10px; border-radius:8px; border:1px solid var(--border, #ddd); margin-bottom:14px; font-size:14px; box-sizing:border-box;">
+      <input type="text" id="pch-birth-date" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" oninput="profileFormatDateInput(this)" style="width:100%; padding:9px 10px; border-radius:8px; border:1px solid var(--border, #ddd); margin-bottom:14px; font-size:14px; box-sizing:border-box;">
 
       <label style="display:block; font-size:12.5px; font-weight:600; margin-bottom:4px;">जन्म समय</label>
       <input type="time" id="pch-birth-time" style="width:100%; padding:9px 10px; border-radius:8px; border:1px solid var(--border, #ddd); margin-bottom:6px; font-size:14px; box-sizing:border-box;">
@@ -247,11 +256,11 @@
         मुझे सही जन्म समय नहीं पता (लगभग दोपहर 12:00 बजे मान लें)
       </label>
 
-      <div id="pch-birth-modal-error" style="display:none; color:#B23A2E; font-size:12px; margin-bottom:10px;">कृपया जन्म तिथि दर्ज करें।</div>
+      <div id="pch-birth-modal-error" style="display:none; color:#B23A2E; font-size:12px; margin-bottom:10px;">कृपया जन्म तिथि dd/mm/yyyy रूप में सही दर्ज करें (जैसे 25/12/1990)।</div>
 
       <div style="display:flex; gap:10px;">
         <button onclick="pchSkipBirthModal()" style="flex:1; padding:10px; border-radius:8px; border:1px solid var(--border, #ddd); background:transparent; font-size:13.5px; cursor:pointer;">बाद में</button>
-        <button onclick="pchSaveBirthModal()" style="flex:1; padding:10px; border-radius:8px; border:none; background:var(--gold, #B8860B); color:#fff; font-weight:600; font-size:13.5px; cursor:pointer;">सहेजें</button>
+        <button onclick="pchSaveBirthModal()" style="flex:1; padding:10px; border-radius:8px; border:none; background:var(--saffron); color:#fff; font-weight:600; font-size:13.5px; cursor:pointer;">सहेजें</button>
       </div>
     </div>
   </div>
@@ -274,7 +283,7 @@
         </div>
       </div>
       <div class="about-footer">
-        <p style="font-size:12px; opacity:0.85; line-height:1.6; text-align:center; margin-bottom:10px;">Developed by<br><strong>ABHISHEK DADHICH</strong><br>Founder &amp; Director<br>Trovato Communications Private Limited<br>Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></p>
+        <p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-by">Developed by</span><br><strong class="dev-company">Trovato Communications Private Limited</strong><br><span class="dev-email-line">Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></span></p>
         <p style="font-size:11px; opacity:0.75; line-height:1.5; text-align:justify;">Disclaimer: इस एप्लिकेशन में दिया गया पंचांग मात्र अनुमान है, जिसकी सटीकता आपकी वर्तमान GPS location और वर्तमान समय पर निर्भर करती है। किसी भी महत्वपूर्ण उपयोग से पहले कृपया किसी प्रामाणिक पंडित/ज्योतिषी से परामर्श अवश्य करें। व्रत त्योहार एवं सार्वजनिक अवकाश सूची सामान्यतः सटीक हैं, एवं विभिन्न पोर्टल से संकलित की गई है, इसलिए कृपया किसी प्रकार की निर्भरता या उपयोग से पूर्व आधिकारिक व अद्यतन सूचना से पुष्टि अवश्य करें।</p>
       </div>
     </div>
@@ -299,7 +308,247 @@
         </div>
       </div>
       <div class="about-footer">
-        <p style="font-size:12px; opacity:0.85; line-height:1.6; text-align:center; margin-bottom:10px;">Developed by<br><strong>ABHISHEK DADHICH</strong><br>Founder &amp; Director<br>Trovato Communications Private Limited<br>Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></p>
+        <p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-by">Developed by</span><br><strong class="dev-company">Trovato Communications Private Limited</strong><br><span class="dev-email-line">Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></span></p>
+        <p style="font-size:11px; opacity:0.75; line-height:1.5; text-align:justify;">Disclaimer: इस एप्लिकेशन में दिया गया पंचांग मात्र अनुमान है, जिसकी सटीकता आपकी वर्तमान GPS location और वर्तमान समय पर निर्भर करती है। किसी भी महत्वपूर्ण उपयोग से पहले कृपया किसी प्रामाणिक पंडित/ज्योतिषी से परामर्श अवश्य करें। व्रत त्योहार एवं सार्वजनिक अवकाश सूची सामान्यतः सटीक हैं, एवं विभिन्न पोर्टल से संकलित की गई है, इसलिए कृपया किसी प्रकार की निर्भरता या उपयोग से पूर्व आधिकारिक व अद्यतन सूचना से पुष्टि अवश्य करें।</p>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ── FULL CHOGHADIYA PAGE (always forced to Hindi) ── -->
+  <div class="about-page panchang-noswee" id="page-choghadiya" data-no-i18n-sweep="1" style="display:none;" lang="hi">
+    <div class="about-banner">
+      <button class="profile-back" onclick="showSecondaryPage('page-panchang')" aria-label="वापस जाएँ">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <div class="ab-title">चौघड़िया</div>
+    </div>
+    <div class="about-body">
+      <div class="about-section">
+        <div class="about-section-title">दिन का चौघड़िया</div>
+        <div class="about-card" id="chogh-full-day"></div>
+      </div>
+      <div class="about-section">
+        <div class="about-section-title">रात्रि का चौघड़िया</div>
+        <div class="about-card" id="chogh-full-night"></div>
+      </div>
+      <div class="about-footer">
+        <p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-by">Developed by</span><br><strong class="dev-company">Trovato Communications Private Limited</strong><br><span class="dev-email-line">Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></span></p>
+        <p style="font-size:11px; opacity:0.75; line-height:1.5; text-align:justify;">Disclaimer: इस एप्लिकेशन में दिया गया पंचांग मात्र अनुमान है, जिसकी सटीकता आपकी वर्तमान GPS location और वर्तमान समय पर निर्भर करती है। किसी भी महत्वपूर्ण उपयोग से पहले कृपया किसी प्रामाणिक पंडित/ज्योतिषी से परामर्श अवश्य करें। व्रत त्योहार एवं सार्वजनिक अवकाश सूची सामान्यतः सटीक हैं, एवं विभिन्न पोर्टल से संकलित की गई है, इसलिए कृपया किसी प्रकार की निर्भरता या उपयोग से पूर्व आधिकारिक व अद्यतन सूचना से पुष्टि अवश्य करें।</p>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ── ELEMENT DETAIL PAGE: previous → current → next timeline for a tapped Panchang container (always Hindi) ── -->
+  <div class="about-page panchang-noswee" id="page-element-detail" data-no-i18n-sweep="1" style="display:none;" lang="hi">
+    <div class="about-banner">
+      <button class="profile-back" onclick="pchCloseElementDetail()" aria-label="वापस जाएँ">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <div class="ab-title" id="eld-title"></div>
+      <div class="ab-sub" id="eld-sub"></div>
+    </div>
+    <div class="about-body">
+      <div class="about-section">
+        <div class="about-section-title eld-head">
+          <span id="eld-section-title">समय-रेखा</span>
+          <span class="eld-clock" id="eld-now-clock"></span>
+        </div>
+        <div class="about-card eld-card" id="eld-timeline"></div>
+        <div class="eld-note" id="eld-note"></div>
+      </div>
+      <div class="about-footer">
+        <p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-by">Developed by</span><br><strong class="dev-company">Trovato Communications Private Limited</strong><br><span class="dev-email-line">Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></span></p>
+        <p style="font-size:11px; opacity:0.75; line-height:1.5; text-align:justify;">Disclaimer: इस एप्लिकेशन में दिया गया पंचांग मात्र अनुमान है, जिसकी सटीकता आपकी वर्तमान GPS location और वर्तमान समय पर निर्भर करती है। किसी भी महत्वपूर्ण उपयोग से पहले कृपया किसी प्रामाणिक पंडित/ज्योतिषी से परामर्श अवश्य करें। व्रत त्योहार एवं सार्वजनिक अवकाश सूची सामान्यतः सटीक हैं, एवं विभिन्न पोर्टल से संकलित की गई है, इसलिए कृपया किसी प्रकार की निर्भरता या उपयोग से पूर्व आधिकारिक व अद्यतन सूचना से पुष्टि अवश्य करें।</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ABOUT US PAGE ── -->
+  <div class="about-page" id="page-about" style="display:none;">
+    <div class="about-banner">
+      <button class="profile-back" onclick="showPanchang()" aria-label="वापस जाएँ">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <div class="ab-mandala"><img src="favicon.png" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"></div>
+      <div class="ab-title">Simple Panchang</div>
+      <div class="ab-sub">Daily Hindu Vaidik Panchang</div>
+    </div>
+    <div class="about-body">
+      <div class="about-section">
+        <div class="about-section-title">About Simple Panchang</div>
+        <div class="about-card">
+          <p>Simple Panchang gives you today's Hindu Vaidik Panchang for your exact location, with the Tithi, Nakshatra and auspicious and inauspicious timings in one clean view.</p>
+          <p>It is built to be fast, readable and free of clutter, so you can check the day in a few seconds.</p>
+        </div>
+      </div>
+
+      <div class="about-section">
+        <div class="about-section-title">What it shows</div>
+        <div class="about-card">
+          <div class="about-row">
+            <div class="about-row-icon">🌙</div>
+            <div class="about-row-text">
+              <div class="about-row-label">Panchang elements</div>
+              <div class="about-row-desc">Tithi, Nakshatra, Yoga, Karana, Rashi, Chandrabal and Tarabal, calculated for your place and time.</div>
+            </div>
+          </div>
+          <div class="about-row">
+            <div class="about-row-icon">⏱️</div>
+            <div class="about-row-text">
+              <div class="about-row-label">Muhurat and Choghadiya</div>
+              <div class="about-row-desc">Auspicious and inauspicious periods, with separate day and night Choghadiya.</div>
+            </div>
+          </div>
+          <div class="about-row">
+            <div class="about-row-icon">🪔</div>
+            <div class="about-row-text">
+              <div class="about-row-label">Vrat, Tyohar and holidays</div>
+              <div class="about-row-desc">Upcoming fasts, festivals and public holidays in one list.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="about-section">
+        <div class="about-section-title">Privacy</div>
+        <div class="about-privacy">
+          <p>Everything you save, such as your name, photo and birth details, stays on this device in local storage. We do not collect or store your data on any server.</p>
+        </div>
+      </div>
+
+      <div class="about-footer">
+        <p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-by">Developed by</span><br><strong class="dev-company">Trovato Communications Private Limited</strong><br><span class="dev-email-line">Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></span></p>
+        <p style="font-size:11px; opacity:0.75; line-height:1.5; text-align:justify;">Disclaimer: इस एप्लिकेशन में दिया गया पंचांग मात्र अनुमान है, जिसकी सटीकता आपकी वर्तमान GPS location और वर्तमान समय पर निर्भर करती है। किसी भी महत्वपूर्ण उपयोग से पहले कृपया किसी प्रामाणिक पंडित/ज्योतिषी से परामर्श अवश्य करें। व्रत त्योहार एवं सार्वजनिक अवकाश सूची सामान्यतः सटीक हैं, एवं विभिन्न पोर्टल से संकलित की गई है, इसलिए कृपया किसी प्रकार की निर्भरता या उपयोग से पूर्व आधिकारिक व अद्यतन सूचना से पुष्टि अवश्य करें।</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ACCOUNT SETTINGS PAGE ── -->
+  <div class="about-page" id="page-accountsettings" style="display:none;">
+    <div class="about-banner">
+      <button class="profile-back" onclick="showPanchang()" aria-label="वापस जाएँ">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <div class="ab-mandala">🔐</div>
+      <div class="ab-title">Account Settings</div>
+      <div class="ab-sub">Your profile &amp; data</div>
+    </div>
+    <div class="about-body">
+      <div class="about-section">
+        <div class="about-section-title">Profile</div>
+        <div class="download-data-card">
+          <p><strong>Your profile</strong></p>
+          <p>Add your name, photo and birth details. Birth details are used to work out your Chandrabal and Tarabal.</p>
+          <button class="outline-btn" onclick="openProfileModal()">Edit profile</button>
+        </div>
+      </div>
+
+      <div class="about-section">
+        <div class="about-section-title">Data &amp; Privacy</div>
+        <div class="download-data-card">
+          <p><strong>Stored on this device only</strong></p>
+          <p>Your profile and preferences are saved in your browser's local storage. Nothing is sent to us.</p>
+        </div>
+        <div class="danger-card" style="margin-top:16px;">
+          <p><strong>Delete my data</strong></p>
+          <p>Remove your profile, photo, birth details and app settings from this device. This cannot be undone.</p>
+          <button class="data-request-btn" onclick="deleteMyLocalData()">Delete my data</button>
+          <div class="data-request-note" id="data-request-note"></div>
+        </div>
+      </div>
+      <div class="about-footer">
+        <p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-by">Developed by</span><br><strong class="dev-company">Trovato Communications Private Limited</strong><br><span class="dev-email-line">Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></span></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── APP SETTINGS PAGE ── -->
+  <div class="about-page" id="page-appsettings" style="display:none;">
+    <div class="about-banner">
+      <button class="profile-back" onclick="showPanchang()" aria-label="वापस जाएँ">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <div class="ab-mandala">⚙️</div>
+      <div class="ab-title">App Settings</div>
+      <div class="ab-sub">Customize your experience</div>
+    </div>
+    <div class="about-body">
+      <div class="about-section">
+        <div class="about-section-title">Appearance</div>
+        <div class="about-card">
+          <div class="settings-toggle-row">
+            <div class="settings-toggle-icon">🌙</div>
+            <div class="settings-toggle-text">
+              <div class="settings-toggle-label">Dark Mode</div>
+              <div class="settings-toggle-desc">Switch to a darker theme, easier on the eyes at night.</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="setting-dark-mode" onchange="toggleDarkMode(this.checked)" aria-label="Dark Mode">
+              <span class="switch-track"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="about-footer">
+        <p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-by">Developed by</span><br><strong class="dev-company">Trovato Communications Private Limited</strong><br><span class="dev-email-line">Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></span></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── HELP PAGE ── -->
+  <div class="about-page" id="page-help" style="display:none;">
+    <div class="about-banner">
+      <button class="profile-back" onclick="showPanchang()" aria-label="वापस जाएँ">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <div class="ab-mandala">💬</div>
+      <div class="ab-title">Help</div>
+      <div class="ab-sub">We're here to assist you</div>
+    </div>
+    <div class="about-body">
+      <div class="about-section">
+        <div class="about-section-title">Submit a Query</div>
+        <div class="about-card">
+          <p style="margin-bottom:12px;">Facing an issue or have a question about the Panchang? Describe it below and we'll get back to you.</p>
+          <textarea class="help-textarea" id="help-query-text" placeholder="Type your question or issue here..."></textarea>
+          <button class="help-submit-btn" onclick="submitHelpQuery()">Submit Query</button>
+          <div class="help-note" id="help-query-note"></div>
+        </div>
+      </div>
+      <div class="about-footer">
+        <p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-by">Developed by</span><br><strong class="dev-company">Trovato Communications Private Limited</strong><br><span class="dev-email-line">Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></span></p>
+        <p style="font-size:11px; opacity:0.75; line-height:1.5; text-align:justify;">Disclaimer: इस एप्लिकेशन में दिया गया पंचांग मात्र अनुमान है, जिसकी सटीकता आपकी वर्तमान GPS location और वर्तमान समय पर निर्भर करती है। किसी भी महत्वपूर्ण उपयोग से पहले कृपया किसी प्रामाणिक पंडित/ज्योतिषी से परामर्श अवश्य करें। व्रत त्योहार एवं सार्वजनिक अवकाश सूची सामान्यतः सटीक हैं, एवं विभिन्न पोर्टल से संकलित की गई है, इसलिए कृपया किसी प्रकार की निर्भरता या उपयोग से पूर्व आधिकारिक व अद्यतन सूचना से पुष्टि अवश्य करें।</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CONTACT US PAGE ── -->
+  <div class="about-page" id="page-contactus" style="display:none;">
+    <div class="about-banner">
+      <button class="profile-back" onclick="showPanchang()" aria-label="वापस जाएँ">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+      </button>
+      <div class="ab-mandala">✉️</div>
+      <div class="ab-title">Contact Us</div>
+      <div class="ab-sub">We'd love to hear from you</div>
+    </div>
+    <div class="about-body">
+      <div class="about-section">
+        <div class="about-section-title">Email</div>
+        <a class="contact-email-card" href="mailto:trovatoindia@protonmail.com">
+          <div class="contact-email-icon">📧</div>
+          <div class="contact-email-text">
+            <div class="contact-email-label">Reach us at</div>
+            <div class="contact-email-value">trovatoindia@protonmail.com</div>
+          </div>
+        </a>
+        <button class="copy-email-btn" onclick="copyContactEmail()">📋 Copy Email Address</button>
+        <div class="copy-email-note" id="copy-email-note"></div>
+      </div>
+      <div class="about-footer">
+        <p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-by">Developed by</span><br><strong class="dev-company">Trovato Communications Private Limited</strong><br><span class="dev-email-line">Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></span></p>
         <p style="font-size:11px; opacity:0.75; line-height:1.5; text-align:justify;">Disclaimer: इस एप्लिकेशन में दिया गया पंचांग मात्र अनुमान है, जिसकी सटीकता आपकी वर्तमान GPS location और वर्तमान समय पर निर्भर करती है। किसी भी महत्वपूर्ण उपयोग से पहले कृपया किसी प्रामाणिक पंडित/ज्योतिषी से परामर्श अवश्य करें। व्रत त्योहार एवं सार्वजनिक अवकाश सूची सामान्यतः सटीक हैं, एवं विभिन्न पोर्टल से संकलित की गई है, इसलिए कृपया किसी प्रकार की निर्भरता या उपयोग से पूर्व आधिकारिक व अद्यतन सूचना से पुष्टि अवश्य करें।</p>
       </div>
     </div>
@@ -318,7 +567,7 @@
       </div>
 
       <div class="profile-privacy-note">
-        <strong>🔒 गोपनीयता:</strong> आपके सभी डेटा केवल इसी डिवाइस पर स्थानीय रूप से (local storage) संग्रहीत होते हैं। हम किसी भी प्रकार का डेटा एकत्र या संग्रहीत नहीं करते।
+        <strong>🔒 Privacy:</strong> आपकी फ़ोटो और डेटा केवल इसी डिवाइस पर स्थानीय रूप से संग्रहीत किया जाता है। हम किसी भी प्रकार का डेटा एकत्र, संग्रहीत या संचारित नहीं करते हैं।
       </div>
 
       <div class="profile-photo-block">
@@ -330,7 +579,7 @@
           </div>
         </div>
         <div class="profile-photo-actions">
-          <button type="button" class="profile-btn-secondary" onclick="document.getElementById('profile-photo-input').click()">फ़ोटो अपलोड करें</button>
+          <button type="button" class="profile-btn-secondary" id="profile-photo-upload-btn" onclick="document.getElementById('profile-photo-input').click()">फ़ोटो अपलोड करें</button>
           <button type="button" class="profile-btn-secondary profile-btn-danger" id="profile-photo-remove" style="display:none;" onclick="profileRemovePhoto()">हटाएँ</button>
         </div>
         <input type="file" id="profile-photo-input" accept="image/*" style="display:none;" onchange="profileOnPhotoSelected(event)">
@@ -340,7 +589,7 @@
       <input type="text" id="profile-fullname" class="profile-input" placeholder="अपना पूरा नाम लिखें" autocomplete="name">
 
       <label class="profile-label" for="profile-birth-date">जन्म तिथि</label>
-      <input type="date" id="profile-birth-date" class="profile-input">
+      <input type="text" id="profile-birth-date" class="profile-input" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" autocomplete="bday" oninput="profileFormatDateInput(this)">
 
       <label class="profile-label" for="profile-birth-time">जन्म समय</label>
       <input type="time" id="profile-birth-time" class="profile-input">
@@ -381,5 +630,6 @@
   </div>
 
 <script src="panchang.js"></script>
+<script src="tour.js"></script>
 </body>
 </html>
