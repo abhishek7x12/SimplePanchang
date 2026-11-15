@@ -1028,19 +1028,17 @@ body.dark-mode #page-element-detail {
 }
 
 
-/* Developer info (footer): larger text */
-.dev-info .dev-by { font-size: 15px; opacity: 0.85; }
-.dev-info .dev-company { font-size: 18px; }
-.dev-info .dev-email-line { font-size: 15px; opacity: 0.9; }
+/* Developer info (footer) */
+.dev-info .dev-by { font-size: 12px; opacity: 0.85; }
+.dev-info .dev-company { font-size: 14px; }
+.dev-info .dev-email-line { font-size: 12px; opacity: 0.9; }
 
 /* Choghadiya: "अभी" tag before the time of the slot running now */
 .pch-chogh-nowtag { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--saffron); color: #fff; margin-right: 8px; vertical-align: 1px; }
 
 
-/* Muhurat: live dot after the time of the slot running now */
-.pch-now-dot { display: inline-block; width: 9px; height: 9px; margin-left: 8px; border-radius: 50%; background: #1E7A4A; vertical-align: 1px; animation: eldBlink 1.6s ease-in-out infinite; }
-body.dark-mode .pch-now-dot { background: #6FD09A; }
-@media (prefers-reduced-motion: reduce) { .pch-now-dot { animation: none; } }
+/* Muhurat: "अभी" tag after the time of the slot running now (same look as the Choghadiya tag) */
+.pch-muhurt-nowtag { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--saffron); color: #fff; margin-left: 8px; vertical-align: 1px; white-space: nowrap; }
 
 
 /* Header icons: app icon, settings and profile all share one size */
@@ -1053,3 +1051,6 @@ body.dark-mode .pch-now-dot { background: #6FD09A; }
 .header-avatar { border-width: 1.5px; border-style: solid; }
 .header-settings-btn svg { width: 26px; height: 26px; }
 .header-avatar svg { width: 22px; height: 22px; }
+
+/* Hide the disclaimer on the first screen while the location selector is showing */
+#page-panchang:has(#pch-location-section:not([style*="display:none"]):not([style*="display: none"])) .pch-disclaimer { display: none; }
