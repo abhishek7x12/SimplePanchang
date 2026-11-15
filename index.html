@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" href="favicon.png">
 <link rel="shortcut icon" href="favicon.png" type="image/png">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Figtree:wght@400;500;600;700&family=Tiro+Devanagari+Hindi&family=Hind:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=20261115">
 </head>
 <body>
 
@@ -124,11 +124,11 @@
             <div class="pch-grid">
               <div class="pch-item"><div class="pch-label">दिनांक</div><div class="pch-value" id="pch-date-summary"></div></div>
               <div class="pch-item"><div class="pch-label">समय</div><div class="pch-value" id="pch-time-summary"></div></div>
-              <div class="pch-item"><div class="pch-label">विक्रम संवत</div><div class="pch-value" id="pch-tatva-samvat"></div></div>
+              <div class="pch-item pch-tap" data-eld="samvat" role="button" tabindex="0" aria-label="विक्रम संवत — विस्तृत समय-रेखा देखें"><div class="pch-label">विक्रम संवत</div><div class="pch-value" id="pch-tatva-samvat"></div></div>
               <div class="pch-item pch-tap" data-eld="masa" role="button" tabindex="0" aria-label="पूर्णिमांत मास — विस्तृत समय-रेखा देखें"><div class="pch-label">पूर्णिमांत मास</div><div class="pch-value" id="pch-purnimant-masa"></div></div>
               <div class="pch-item pch-tap" data-eld="paksha" role="button" tabindex="0" aria-label="पक्ष — विस्तृत समय-रेखा देखें"><div class="pch-label">पक्ष</div><div class="pch-value" id="pch-paksha"></div></div>
               <div class="pch-item pch-tap" data-eld="tithi" role="button" tabindex="0" aria-label="तिथि — विस्तृत समय-रेखा देखें"><div class="pch-label">तिथि</div><div class="pch-value" id="pch-tithi"></div></div>
-              <div class="pch-item"><div class="pch-label">अयन</div><div class="pch-value" id="pch-ayan"></div></div>
+              <div class="pch-item pch-tap" data-eld="ayan" role="button" tabindex="0" aria-label="अयन — विस्तृत समय-रेखा देखें"><div class="pch-label">अयन</div><div class="pch-value" id="pch-ayan"></div></div>
               <div class="pch-item pch-tap" data-eld="ritu" role="button" tabindex="0" aria-label="ऋतु — विस्तृत समय-रेखा देखें"><div class="pch-label">ऋतु</div><div class="pch-value" id="pch-ritu"></div></div>
             </div>
           </div>
@@ -153,7 +153,7 @@
 
         <!-- Muhurat / Kaal -->
         <div class="about-section">
-          <div class="about-section-title">शुभ-अशुभ मुहूर्त</div>
+          <div class="about-section-title">शुभ-अशुभ</div>
           <div class="about-card">
             <div class="pch-grid" id="pch-muhurt-grid"></div>
           </div>
@@ -234,7 +234,7 @@
 
       <div class="about-footer">
         <p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-by">Developed by</span><br><strong class="dev-company">Trovato Communications Private Limited</strong><br><span class="dev-email-line">Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></span></p>
-        <p style="font-size:11px; opacity:0.75; line-height:1.5; text-align:justify;">Disclaimer: इस एप्लिकेशन में दिया गया पंचांग मात्र अनुमान है, जिसकी सटीकता आपकी वर्तमान GPS location और वर्तमान समय पर निर्भर करती है। किसी भी महत्वपूर्ण उपयोग से पहले कृपया किसी प्रामाणिक पंडित/ज्योतिषी से परामर्श अवश्य करें। व्रत त्योहार एवं सार्वजनिक अवकाश सूची सामान्यतः सटीक हैं, एवं विभिन्न पोर्टल से संकलित की गई है, इसलिए कृपया किसी प्रकार की निर्भरता या उपयोग से पूर्व आधिकारिक व अद्यतन सूचना से पुष्टि अवश्य करें।</p>
+        <p class="pch-disclaimer" style="font-size:11px; opacity:0.75; line-height:1.5; text-align:justify;">Disclaimer: इस एप्लिकेशन में दिया गया पंचांग मात्र अनुमान है, जिसकी सटीकता आपकी वर्तमान GPS location और वर्तमान समय पर निर्भर करती है। किसी भी महत्वपूर्ण उपयोग से पहले कृपया किसी प्रामाणिक पंडित/ज्योतिषी से परामर्श अवश्य करें। व्रत त्योहार एवं सार्वजनिक अवकाश सूची सामान्यतः सटीक हैं, एवं विभिन्न पोर्टल से संकलित की गई है, इसलिए कृपया किसी प्रकार की निर्भरता या उपयोग से पूर्व आधिकारिक व अद्यतन सूचना से पुष्टि अवश्य करें।</p>
       </div>
 
     </div>
@@ -324,6 +324,11 @@
       <div class="ab-title">चौघड़िया</div>
     </div>
     <div class="about-body">
+      <!-- Shown only while the selected time is before today's sunrise (see pchRenderChoghadiyaFull) -->
+      <div class="about-section" id="chogh-full-prev-section" style="display:none;">
+        <div class="about-section-title">पिछली रात्रि का चौघड़िया (आज के सूर्योदय तक)</div>
+        <div class="about-card" id="chogh-full-prev"></div>
+      </div>
       <div class="about-section">
         <div class="about-section-title">दिन का चौघड़िया</div>
         <div class="about-card" id="chogh-full-day"></div>
@@ -420,7 +425,6 @@
 
       <div class="about-footer">
         <p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-by">Developed by</span><br><strong class="dev-company">Trovato Communications Private Limited</strong><br><span class="dev-email-line">Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></span></p>
-        <p style="font-size:11px; opacity:0.75; line-height:1.5; text-align:justify;">Disclaimer: इस एप्लिकेशन में दिया गया पंचांग मात्र अनुमान है, जिसकी सटीकता आपकी वर्तमान GPS location और वर्तमान समय पर निर्भर करती है। किसी भी महत्वपूर्ण उपयोग से पहले कृपया किसी प्रामाणिक पंडित/ज्योतिषी से परामर्श अवश्य करें। व्रत त्योहार एवं सार्वजनिक अवकाश सूची सामान्यतः सटीक हैं, एवं विभिन्न पोर्टल से संकलित की गई है, इसलिए कृपया किसी प्रकार की निर्भरता या उपयोग से पूर्व आधिकारिक व अद्यतन सूचना से पुष्टि अवश्य करें।</p>
       </div>
     </div>
   </div>
@@ -519,7 +523,6 @@
       </div>
       <div class="about-footer">
         <p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-by">Developed by</span><br><strong class="dev-company">Trovato Communications Private Limited</strong><br><span class="dev-email-line">Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></span></p>
-        <p style="font-size:11px; opacity:0.75; line-height:1.5; text-align:justify;">Disclaimer: इस एप्लिकेशन में दिया गया पंचांग मात्र अनुमान है, जिसकी सटीकता आपकी वर्तमान GPS location और वर्तमान समय पर निर्भर करती है। किसी भी महत्वपूर्ण उपयोग से पहले कृपया किसी प्रामाणिक पंडित/ज्योतिषी से परामर्श अवश्य करें। व्रत त्योहार एवं सार्वजनिक अवकाश सूची सामान्यतः सटीक हैं, एवं विभिन्न पोर्टल से संकलित की गई है, इसलिए कृपया किसी प्रकार की निर्भरता या उपयोग से पूर्व आधिकारिक व अद्यतन सूचना से पुष्टि अवश्य करें।</p>
       </div>
     </div>
   </div>
@@ -549,7 +552,6 @@
       </div>
       <div class="about-footer">
         <p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-by">Developed by</span><br><strong class="dev-company">Trovato Communications Private Limited</strong><br><span class="dev-email-line">Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></span></p>
-        <p style="font-size:11px; opacity:0.75; line-height:1.5; text-align:justify;">Disclaimer: इस एप्लिकेशन में दिया गया पंचांग मात्र अनुमान है, जिसकी सटीकता आपकी वर्तमान GPS location और वर्तमान समय पर निर्भर करती है। किसी भी महत्वपूर्ण उपयोग से पहले कृपया किसी प्रामाणिक पंडित/ज्योतिषी से परामर्श अवश्य करें। व्रत त्योहार एवं सार्वजनिक अवकाश सूची सामान्यतः सटीक हैं, एवं विभिन्न पोर्टल से संकलित की गई है, इसलिए कृपया किसी प्रकार की निर्भरता या उपयोग से पूर्व आधिकारिक व अद्यतन सूचना से पुष्टि अवश्य करें।</p>
       </div>
     </div>
   </div>
@@ -629,7 +631,7 @@
     </div>
   </div>
 
-<script src="panchang.js"></script>
+<script src="panchang.js?v=20261115"></script>
 <script src="tour.js"></script>
 </body>
 </html>
