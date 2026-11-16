@@ -9,7 +9,7 @@
   'use strict';
 
   var STATE_KEY = 'pch_tour_state';
-  var BLOCKING_MODALS = ['pch-birth-modal', 'profile-modal', 'profile-crop-modal'];
+  var BLOCKING_MODALS = ['profile-modal', 'profile-crop-modal'];
 
   var $ = function (id) { return document.getElementById(id); };
   var q = function (s) { return document.querySelector(s); };
@@ -78,17 +78,13 @@
 
     tap: { page: 'main', badge: true, hand: true, target: function () { return q('.pch-item[data-eld="tithi"]'); },
       title: 'किसी भी बॉक्स को छुएँ',
-      body: 'तिथि, नक्षत्र, योग, करण, राशि, मास, पक्ष और ऋतु को छूने पर उसकी पूरी समय-रेखा खुलती है — पिछला क्या था, अभी क्या है और आगे क्या आएगा।',
+      body: 'तिथि, नक्षत्र, योग, करण, राशि, मास, पक्ष, ऋतु, अयन और विक्रम संवत को छूने पर उसकी पूरी समय-रेखा खुलती है — पिछला क्या था, अभी क्या है और आगे क्या आएगा।',
       next: 'खोलकर देखें' },
 
     d1: { page: 'detail', badge: true,
-      target: function () { return q('#eld-timeline .eld-boundary:nth-child(3)') || q('#eld-timeline .eld-boundary'); },
-      title: 'हर बिंदु = बदलाव का समय',
-      body: 'बाईं पट्टी के हर बिंदु के साथ वह सटीक समय लिखा है जब एक तिथि समाप्त होती है और अगली शुरू होती है।' },
-
-    d2: { page: 'detail', badge: true, target: function () { return q('#eld-timeline .eld-seg--current .eld-seg-card'); },
-      title: 'अभी कितना बीता',
-      body: 'वर्तमान तिथि के कार्ड में प्रगति पट्टी है — कितना समय बीत चुका, कितना शेष है और कुल कितने प्रतिशत। यह अपने-आप अपडेट होती रहती है।' },
+      target: function () { return q('#eld-timeline .eld-seg--current') || q('#eld-timeline .eld-seg-card'); },
+      title: 'बदलाव का समय और अभी कितना बीता',
+      body: 'बाईं पट्टी के हर बिंदु के साथ वह सटीक समय लिखा है जब एक तिथि समाप्त होती है और अगली शुरू होती है। वर्तमान तिथि के कार्ड की प्रगति पट्टी बताती है कि कितना समय बीता, कितना शेष है और कुल कितने प्रतिशत — यह अपने-आप अपडेट होती रहती है।' },
 
     place: { page: 'main', target: function () { return q('#pch-badle-bar button'); },
       title: 'स्थान व समय बदलें',
@@ -101,9 +97,7 @@
     done: { page: 'main', center: true, art: '✅', title: 'सब तैयार!',
       body: 'यह परिचय दोबारा देखना हो तो कभी भी ⚙️ → App Tour चुनें।', next: 'पंचांग देखें', last: true }
   };
-  var FLOWS = {
-    full: ['welcome', 'date', 'place', 'header', 'tap', 'd1', 'd2', 'done']
-  };
+  var FLOW = ['welcome', 'date', 'place', 'header', 'tap', 'd1', 'done'];
 
   /* ── DOM ── */
   var root, spot, tip, hand, refs = {};
@@ -143,7 +137,7 @@
   }
 
   /* ── engine ── */
-  var active = false, busy = false, mode = null, steps = [], idx = 0, nav = 0, raf = 0;
+  var active = false, busy = false, steps = FLOW, idx = 0, nav = 0, raf = 0;
   function curStep() { return STEPS[steps[idx]]; }
 
   function onKey(e) {
@@ -219,7 +213,6 @@
       place();
     } catch (err) {
       console.error('Tour step failed:', err);
-      busy = false;
       if (active) finish(false);       // fail open: hide the overlay, hand the app back
     } finally {
       clearTimeout(watchdog);
@@ -231,7 +224,7 @@
     refs.title.textContent = st.title;
     refs.body.textContent = st.body;
     refs.badge.style.display = st.badge ? '' : 'none';
-    var artHTML = st.artHTML || (st.art ? '<div class="sp-art-emoji">' + st.art + '</div>' : '');
+    var artHTML = st.art ? '<div class="sp-art-emoji">' + st.art + '</div>' : '';
     refs.art.innerHTML = artHTML;
     refs.art.style.display = artHTML ? '' : 'none';
     refs.count.textContent = (idx + 1) + ' / ' + steps.length;
@@ -284,10 +277,10 @@
     if (!tip.contains(document.activeElement)) refs.next.focus({ preventScroll: true });
   }
 
-  async function start(m) {
+  async function start() {
     if (active) return;
     build();
-    mode = m; steps = FLOWS[m]; idx = 0; active = true;
+    idx = 0; active = true;
     window.spTourActive = true;
     var s = readState();
     s.tour = true;                                      // never nag twice, even if the tour is skipped
@@ -318,13 +311,7 @@
       window.pchCloseElementDetail();
       await waitFor(function () { return !detailOpen(); }, 2000);
     }
-    if (completed && mode === 'full') window.scrollTo({ top: 0, behavior: 'smooth' });
-    setTimeout(resumePrompts, 700);
-  }
-
-  // The birth-details prompt (chandrabal/tarabal) was held back while the tour ran.
-  function resumePrompts() {
-    if (typeof window.pchResumeBalamPrompt === 'function') window.pchResumeBalamPrompt();
+    if (completed) window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   /* ── entry points ── */
@@ -336,37 +323,24 @@
     return BLOCKING_MODALS.some(function (id) { var e = $(id); return e && e.style.display === 'flex'; });
   }
 
-  function decideMode() {
-    var s = readState();
-    return (!s.tour && !hasLegacyData()) ? 'full' : null;
+  function tourDue() {
+    return !readState().tour && !hasLegacyData();
   }
-
-  // True while the tour is due or running, so panchang.js can hold back other
-  // first-run popups (the birth-details prompt) until the tour is out of the way.
-  var autoResolved = false;
-  window.spTourPending = function () {
-    try { return active || (!autoResolved && storageWorks() && decideMode() !== null); }
-    catch (e) { return false; }
-  };
 
   // Called by panchang.js after each successful calculation; decides once per page load.
   var autoChecked = false;
   window.spTourMaybeStart = function () {
     if (autoChecked || active) return;
     autoChecked = true;
-    var m = null;
-    try { m = storageWorks() ? decideMode() : null; } catch (e) { m = null; }
-    if (!m) { autoResolved = true; return; }
+    var due = false;
+    try { due = storageWorks() && tourDue(); } catch (e) { due = false; }
+    if (!due) return;
     sleep(1200).then(function () {
       return waitFor(function () { return appReady() && !modalOpen(); }, 20000, 300);
     }).then(function (ok) {
-      autoResolved = true;
-      if (ok) return start(m);
-      resumePrompts();
+      if (ok) return start();
     }).catch(function (err) {
-      autoResolved = true;
       console.warn('Product tour could not start:', err);
-      resumePrompts();
     });
   };
 
@@ -377,6 +351,6 @@
     var ok = await waitFor(appReady, 10000, 100);
     if (!ok) return;
     await sleep(350);
-    start('full');
+    start();
   };
 })();
