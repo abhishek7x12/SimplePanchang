@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" href="favicon.png">
 <link rel="shortcut icon" href="favicon.png" type="image/png">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Figtree:wght@400;500;600;700&family=Tiro+Devanagari+Hindi&family=Hind:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20261115">
+<link rel="stylesheet" href="styles.css?v=20261116i">
 </head>
 <body>
 
@@ -45,10 +45,6 @@
         <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
         App Tour
       </button>
-      <button class="settings-item" onclick="closeSettings();showHelp()">
-        <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        Help
-      </button>
       <button class="settings-item" onclick="closeSettings();showContactUs()">
         <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
         Contact Us
@@ -62,17 +58,12 @@
 </header>
 
 <div class="pages">
-  <!-- ── HINDU VAIDIK PANCHANG PAGE (always forced to Hindi — excluded from global language sweep) ── -->
-  <div class="about-page panchang-noswee" id="page-panchang" data-no-i18n-sweep="1" style="display:block;" lang="hi">
+  <!-- ── HINDU VAIDIK PANCHANG PAGE (Hindi) ── -->
+  <div class="about-page" id="page-panchang" style="display:block;" lang="hi">
     <div class="about-body">
       <div id="pch-gps-loading" style="display:none; padding:14px 2px; font-size:13px; color:var(--ink-soft); align-items:center; gap:8px;">
         📍 आपका स्थान पता किया जा रहा है…
       </div>
-
-      <!-- Location bar previously shown here has moved to the bottom of
-           the page (id="pch-badle-bar", before the disclaimer) since the
-           location/timestamp text duplicated what the header already
-           shows. -->
 
       <!-- Location selection (hidden by default; shown automatically only
            if the silent GPS auto-fetch on page-open fails) -->
@@ -81,10 +72,6 @@
         <div class="about-card" id="pch-location-card">
           <div class="pch-loc-btns" id="pch-loc-btns">
             <button class="pch-loc-btn" onclick="pchUseGPS()">📍 वर्तमान GPS स्थान</button>
-            <!-- Profile city buttons are injected here at runtime by
-                 pchRenderProfileLocationBtns() — only for cities the user
-                 has actually saved, labelled with their real name (e.g.
-                 "Beawar (RJ)") instead of a generic placeholder. -->
             <button class="pch-loc-btn" onclick="pchShowManualEntry()">✍️ स्थान का नाम लिखें</button>
           </div>
           <div id="pch-manual-entry" style="display:none; margin-top:14px;">
@@ -232,42 +219,13 @@
         <button onclick="pchOpenLocationSelector()" style="font-size:13px; font-weight:700; color:var(--saffron); background:var(--saffron-pale); border:1px solid var(--saffron); border-radius:999px; cursor:pointer; padding:9px 18px;">Change Location &amp; Time</button>
       </div>
 
-      <div class="about-footer">
-        <p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-by">Developed by</span><br><strong class="dev-company">Trovato Communications Private Limited</strong><br><span class="dev-email-line">Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></span></p>
-        <p class="pch-disclaimer" style="font-size:11px; opacity:0.75; line-height:1.5; text-align:justify;">Disclaimer: इस एप्लिकेशन में दिया गया पंचांग मात्र अनुमान है, जिसकी सटीकता आपकी वर्तमान GPS location और वर्तमान समय पर निर्भर करती है। किसी भी महत्वपूर्ण उपयोग से पहले कृपया किसी प्रामाणिक पंडित/ज्योतिषी से परामर्श अवश्य करें। व्रत त्योहार एवं सार्वजनिक अवकाश सूची सामान्यतः सटीक हैं, एवं विभिन्न पोर्टल से संकलित की गई है, इसलिए कृपया किसी प्रकार की निर्भरता या उपयोग से पूर्व आधिकारिक व अद्यतन सूचना से पुष्टि अवश्य करें।</p>
-      </div>
+      <div class="about-footer" data-footer="disclaimer-pch"></div>
 
     </div>
   </div>
 
-  <!-- ── Birth details popup (Janma Tithi/Samay) for चंद्रबल & ताराबल ── -->
-  <div id="pch-birth-modal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(20,15,10,0.55); align-items:center; justify-content:center; padding:20px;">
-    <div style="background:var(--card-bg, #fff); border-radius:14px; max-width:380px; width:100%; padding:22px 20px; box-shadow:0 10px 40px rgba(0,0,0,0.3);">
-      <div style="font-size:16px; font-weight:700; margin-bottom:6px;">चंद्रबल व ताराबल हेतु जन्म विवरण</div>
-      <div style="font-size:12.5px; color:var(--ink-soft); margin-bottom:16px; line-height:1.5;">आपकी जन्म राशि व जन्म नक्षत्र, आपकी जन्म तिथि व समय से स्वतः निकाले जाएंगे। यह विवरण आपकी प्रोफ़ाइल में सुरक्षित रहेगा, दोबारा नहीं पूछा जाएगा।</div>
-
-      <label style="display:block; font-size:12.5px; font-weight:600; margin-bottom:4px;">जन्म तिथि</label>
-      <input type="text" id="pch-birth-date" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" oninput="profileFormatDateInput(this)" style="width:100%; padding:9px 10px; border-radius:8px; border:1px solid var(--border, #ddd); margin-bottom:14px; font-size:14px; box-sizing:border-box;">
-
-      <label style="display:block; font-size:12.5px; font-weight:600; margin-bottom:4px;">जन्म समय</label>
-      <input type="time" id="pch-birth-time" style="width:100%; padding:9px 10px; border-radius:8px; border:1px solid var(--border, #ddd); margin-bottom:6px; font-size:14px; box-sizing:border-box;">
-      <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-soft); margin-bottom:16px;">
-        <input type="checkbox" id="pch-birth-time-unknown" onchange="document.getElementById('pch-birth-time').disabled=this.checked;">
-        मुझे सही जन्म समय नहीं पता (लगभग दोपहर 12:00 बजे मान लें)
-      </label>
-
-      <div id="pch-birth-modal-error" style="display:none; color:#B23A2E; font-size:12px; margin-bottom:10px;">कृपया जन्म तिथि dd/mm/yyyy रूप में सही दर्ज करें (जैसे 25/12/1990)।</div>
-
-      <div style="display:flex; gap:10px;">
-        <button onclick="pchSkipBirthModal()" style="flex:1; padding:10px; border-radius:8px; border:1px solid var(--border, #ddd); background:transparent; font-size:13.5px; cursor:pointer;">बाद में</button>
-        <button onclick="pchSaveBirthModal()" style="flex:1; padding:10px; border-radius:8px; border:none; background:var(--saffron); color:#fff; font-weight:600; font-size:13.5px; cursor:pointer;">सहेजें</button>
-      </div>
-    </div>
-  </div>
-
-
-  <!-- ── FULL VRAT / TYOHAR LIST PAGE (always forced to Hindi) ── -->
-  <div class="about-page panchang-noswee" id="page-vrattyohar" data-no-i18n-sweep="1" style="display:none;" lang="hi">
+  <!-- ── FULL VRAT / TYOHAR LIST PAGE ── -->
+  <div class="about-page" id="page-vrattyohar" style="display:none;" lang="hi">
     <div class="about-banner">
       <button class="profile-back" onclick="showSecondaryPage('page-panchang')">
         <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
@@ -282,16 +240,13 @@
           <div style="padding:10px 2px; color:var(--ink-soft); font-size:13px;">लोड हो रहा है…</div>
         </div>
       </div>
-      <div class="about-footer">
-        <p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-by">Developed by</span><br><strong class="dev-company">Trovato Communications Private Limited</strong><br><span class="dev-email-line">Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></span></p>
-        <p style="font-size:11px; opacity:0.75; line-height:1.5; text-align:justify;">Disclaimer: इस एप्लिकेशन में दिया गया पंचांग मात्र अनुमान है, जिसकी सटीकता आपकी वर्तमान GPS location और वर्तमान समय पर निर्भर करती है। किसी भी महत्वपूर्ण उपयोग से पहले कृपया किसी प्रामाणिक पंडित/ज्योतिषी से परामर्श अवश्य करें। व्रत त्योहार एवं सार्वजनिक अवकाश सूची सामान्यतः सटीक हैं, एवं विभिन्न पोर्टल से संकलित की गई है, इसलिए कृपया किसी प्रकार की निर्भरता या उपयोग से पूर्व आधिकारिक व अद्यतन सूचना से पुष्टि अवश्य करें।</p>
-      </div>
+      <div class="about-footer" data-footer="disclaimer"></div>
     </div>
   </div>
 
 
-  <!-- ── FULL PUBLIC HOLIDAYS LIST PAGE (always forced to Hindi) ── -->
-  <div class="about-page panchang-noswee" id="page-holidays" data-no-i18n-sweep="1" style="display:none;" lang="hi">
+  <!-- ── FULL PUBLIC HOLIDAYS LIST PAGE ── -->
+  <div class="about-page" id="page-holidays" style="display:none;" lang="hi">
     <div class="about-banner">
       <button class="profile-back" onclick="showSecondaryPage('page-panchang')">
         <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
@@ -307,16 +262,13 @@
           <div style="padding:10px 2px; color:var(--ink-soft); font-size:13px;">लोड हो रहा है…</div>
         </div>
       </div>
-      <div class="about-footer">
-        <p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-by">Developed by</span><br><strong class="dev-company">Trovato Communications Private Limited</strong><br><span class="dev-email-line">Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></span></p>
-        <p style="font-size:11px; opacity:0.75; line-height:1.5; text-align:justify;">Disclaimer: इस एप्लिकेशन में दिया गया पंचांग मात्र अनुमान है, जिसकी सटीकता आपकी वर्तमान GPS location और वर्तमान समय पर निर्भर करती है। किसी भी महत्वपूर्ण उपयोग से पहले कृपया किसी प्रामाणिक पंडित/ज्योतिषी से परामर्श अवश्य करें। व्रत त्योहार एवं सार्वजनिक अवकाश सूची सामान्यतः सटीक हैं, एवं विभिन्न पोर्टल से संकलित की गई है, इसलिए कृपया किसी प्रकार की निर्भरता या उपयोग से पूर्व आधिकारिक व अद्यतन सूचना से पुष्टि अवश्य करें।</p>
-      </div>
+      <div class="about-footer" data-footer="disclaimer"></div>
     </div>
   </div>
 
 
-  <!-- ── FULL CHOGHADIYA PAGE (always forced to Hindi) ── -->
-  <div class="about-page panchang-noswee" id="page-choghadiya" data-no-i18n-sweep="1" style="display:none;" lang="hi">
+  <!-- ── FULL CHOGHADIYA PAGE ── -->
+  <div class="about-page" id="page-choghadiya" style="display:none;" lang="hi">
     <div class="about-banner">
       <button class="profile-back" onclick="showSecondaryPage('page-panchang')" aria-label="वापस जाएँ">
         <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
@@ -337,16 +289,13 @@
         <div class="about-section-title">रात्रि का चौघड़िया</div>
         <div class="about-card" id="chogh-full-night"></div>
       </div>
-      <div class="about-footer">
-        <p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-by">Developed by</span><br><strong class="dev-company">Trovato Communications Private Limited</strong><br><span class="dev-email-line">Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></span></p>
-        <p style="font-size:11px; opacity:0.75; line-height:1.5; text-align:justify;">Disclaimer: इस एप्लिकेशन में दिया गया पंचांग मात्र अनुमान है, जिसकी सटीकता आपकी वर्तमान GPS location और वर्तमान समय पर निर्भर करती है। किसी भी महत्वपूर्ण उपयोग से पहले कृपया किसी प्रामाणिक पंडित/ज्योतिषी से परामर्श अवश्य करें। व्रत त्योहार एवं सार्वजनिक अवकाश सूची सामान्यतः सटीक हैं, एवं विभिन्न पोर्टल से संकलित की गई है, इसलिए कृपया किसी प्रकार की निर्भरता या उपयोग से पूर्व आधिकारिक व अद्यतन सूचना से पुष्टि अवश्य करें।</p>
-      </div>
+      <div class="about-footer" data-footer="disclaimer"></div>
     </div>
   </div>
 
 
-  <!-- ── ELEMENT DETAIL PAGE: previous → current → next timeline for a tapped Panchang container (always Hindi) ── -->
-  <div class="about-page panchang-noswee" id="page-element-detail" data-no-i18n-sweep="1" style="display:none;" lang="hi">
+  <!-- ── ELEMENT DETAIL PAGE: previous → current → next timeline for a tapped Panchang container ── -->
+  <div class="about-page" id="page-element-detail" style="display:none;" lang="hi">
     <div class="about-banner">
       <button class="profile-back" onclick="pchCloseElementDetail()" aria-label="वापस जाएँ">
         <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
@@ -363,10 +312,7 @@
         <div class="about-card eld-card" id="eld-timeline"></div>
         <div class="eld-note" id="eld-note"></div>
       </div>
-      <div class="about-footer">
-        <p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-by">Developed by</span><br><strong class="dev-company">Trovato Communications Private Limited</strong><br><span class="dev-email-line">Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></span></p>
-        <p style="font-size:11px; opacity:0.75; line-height:1.5; text-align:justify;">Disclaimer: इस एप्लिकेशन में दिया गया पंचांग मात्र अनुमान है, जिसकी सटीकता आपकी वर्तमान GPS location और वर्तमान समय पर निर्भर करती है। किसी भी महत्वपूर्ण उपयोग से पहले कृपया किसी प्रामाणिक पंडित/ज्योतिषी से परामर्श अवश्य करें। व्रत त्योहार एवं सार्वजनिक अवकाश सूची सामान्यतः सटीक हैं, एवं विभिन्न पोर्टल से संकलित की गई है, इसलिए कृपया किसी प्रकार की निर्भरता या उपयोग से पूर्व आधिकारिक व अद्यतन सूचना से पुष्टि अवश्य करें।</p>
-      </div>
+      <div class="about-footer" data-footer="disclaimer"></div>
     </div>
   </div>
 
@@ -417,15 +363,14 @@
       </div>
 
       <div class="about-section">
-        <div class="about-section-title">Privacy</div>
-        <div class="about-privacy">
-          <p>Everything you save, such as your name, photo and birth details, stays on this device in local storage. We do not collect or store your data on any server.</p>
+        <div class="about-section-title">Version</div>
+        <div class="about-card">
+          <p><strong>Version 2.2.5</strong></p>
+          <p>Released on 16 November 2026</p>
         </div>
       </div>
 
-      <div class="about-footer">
-        <p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-by">Developed by</span><br><strong class="dev-company">Trovato Communications Private Limited</strong><br><span class="dev-email-line">Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></span></p>
-      </div>
+      <div class="about-footer" data-footer="about"></div>
     </div>
   </div>
 
@@ -451,20 +396,17 @@
 
       <div class="about-section">
         <div class="about-section-title">Data &amp; Privacy</div>
-        <div class="download-data-card">
-          <p><strong>Stored on this device only</strong></p>
-          <p>Your profile and preferences are saved in your browser's local storage. Nothing is sent to us.</p>
+        <div class="download-data-card" lang="hi">
+          <p><strong>🔒 Privacy</strong></p>
+          <p>आपकी फ़ोटो और डेटा केवल इसी डिवाइस पर स्थानीय रूप से संग्रहीत किया जाता है। हम किसी भी प्रकार का डेटा एकत्र, संग्रहीत या संचारित नहीं करते हैं।</p>
         </div>
-        <div class="danger-card" style="margin-top:16px;">
+        <div class="download-data-card" style="margin-top:16px;">
           <p><strong>Delete my data</strong></p>
           <p>Remove your profile, photo, birth details and app settings from this device. This cannot be undone.</p>
           <button class="data-request-btn" onclick="deleteMyLocalData()">Delete my data</button>
-          <div class="data-request-note" id="data-request-note"></div>
         </div>
       </div>
-      <div class="about-footer">
-        <p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-by">Developed by</span><br><strong class="dev-company">Trovato Communications Private Limited</strong><br><span class="dev-email-line">Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></span></p>
-      </div>
+      <div class="about-footer" data-footer="plain"></div>
     </div>
   </div>
 
@@ -495,35 +437,7 @@
           </div>
         </div>
       </div>
-      <div class="about-footer">
-        <p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-by">Developed by</span><br><strong class="dev-company">Trovato Communications Private Limited</strong><br><span class="dev-email-line">Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></span></p>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── HELP PAGE ── -->
-  <div class="about-page" id="page-help" style="display:none;">
-    <div class="about-banner">
-      <button class="profile-back" onclick="showPanchang()" aria-label="वापस जाएँ">
-        <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-      </button>
-      <div class="ab-mandala">💬</div>
-      <div class="ab-title">Help</div>
-      <div class="ab-sub">We're here to assist you</div>
-    </div>
-    <div class="about-body">
-      <div class="about-section">
-        <div class="about-section-title">Submit a Query</div>
-        <div class="about-card">
-          <p style="margin-bottom:12px;">Facing an issue or have a question about the Panchang? Describe it below and we'll get back to you.</p>
-          <textarea class="help-textarea" id="help-query-text" placeholder="Type your question or issue here..."></textarea>
-          <button class="help-submit-btn" onclick="submitHelpQuery()">Submit Query</button>
-          <div class="help-note" id="help-query-note"></div>
-        </div>
-      </div>
-      <div class="about-footer">
-        <p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-by">Developed by</span><br><strong class="dev-company">Trovato Communications Private Limited</strong><br><span class="dev-email-line">Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></span></p>
-      </div>
+      <div class="about-footer" data-footer="plain"></div>
     </div>
   </div>
 
@@ -540,19 +454,29 @@
     <div class="about-body">
       <div class="about-section">
         <div class="about-section-title">Email</div>
-        <a class="contact-email-card" href="mailto:trovatoindia@protonmail.com">
-          <div class="contact-email-icon">📧</div>
-          <div class="contact-email-text">
-            <div class="contact-email-label">Reach us at</div>
-            <div class="contact-email-value">trovatoindia@protonmail.com</div>
-          </div>
-        </a>
-        <button class="copy-email-btn" onclick="copyContactEmail()">📋 Copy Email Address</button>
-        <div class="copy-email-note" id="copy-email-note"></div>
+        <div class="contact-email-card">
+          <a class="contact-email-link" href="mailto:trovatoindia@protonmail.com">
+            <div class="contact-email-icon">📧</div>
+            <div class="contact-email-text">
+              <div class="contact-email-label">Reach us at</div>
+              <div class="contact-email-value">trovatoindia@protonmail.com</div>
+            </div>
+          </a>
+          <button class="copy-email-btn" onclick="copyContactEmail()">📋 Copy Email Address</button>
+          <div class="copy-email-note" id="copy-email-note"></div>
+        </div>
       </div>
-      <div class="about-footer">
-        <p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-by">Developed by</span><br><strong class="dev-company">Trovato Communications Private Limited</strong><br><span class="dev-email-line">Email: <a href="mailto:trovatoindia@protonmail.com" style="color:var(--saffron); text-decoration:none;">trovatoindia@protonmail.com</a></span></p>
+
+      <div class="about-section">
+        <div class="about-section-title">Need Help, Submit a Query</div>
+        <div class="about-card">
+          <p style="margin-bottom:12px;">Facing an issue or have a question about the Panchang? Describe it below and we'll get back to you.</p>
+          <textarea class="help-textarea" id="help-query-text" placeholder="Type your question or issue here..."></textarea>
+          <button class="help-submit-btn" onclick="submitHelpQuery()">Submit Query</button>
+          <div class="help-note" id="help-query-note"></div>
+        </div>
       </div>
+      <div class="about-footer" data-footer="plain"></div>
     </div>
   </div>
 
@@ -565,11 +489,6 @@
     <div class="profile-modal-card">
       <div class="profile-modal-header">
         <div class="profile-modal-title" id="profile-modal-title">प्रोफ़ाइल</div>
-        <button type="button" class="profile-modal-close" onclick="closeProfileModal()" aria-label="बंद करें">×</button>
-      </div>
-
-      <div class="profile-privacy-note">
-        <strong>🔒 Privacy:</strong> आपकी फ़ोटो और डेटा केवल इसी डिवाइस पर स्थानीय रूप से संग्रहीत किया जाता है। हम किसी भी प्रकार का डेटा एकत्र, संग्रहीत या संचारित नहीं करते हैं।
       </div>
 
       <div class="profile-photo-block">
@@ -587,24 +506,32 @@
         <input type="file" id="profile-photo-input" accept="image/*" style="display:none;" onchange="profileOnPhotoSelected(event)">
       </div>
 
-      <label class="profile-label" for="profile-fullname">पूरा नाम</label>
-      <input type="text" id="profile-fullname" class="profile-input" placeholder="अपना पूरा नाम लिखें" autocomplete="name">
+      <label class="profile-label" for="profile-firstname">नाम</label>
+      <div class="profile-name-row">
+        <input type="text" id="profile-firstname" class="profile-input" placeholder="प्रथम नाम" aria-label="प्रथम नाम (First name)" autocomplete="given-name">
+        <input type="text" id="profile-lastname" class="profile-input" placeholder="अंतिम नाम" aria-label="अंतिम नाम (Last name)" autocomplete="family-name">
+      </div>
 
-      <label class="profile-label" for="profile-birth-date">जन्म तिथि</label>
-      <input type="text" id="profile-birth-date" class="profile-input" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" autocomplete="bday" oninput="profileFormatDateInput(this)">
-
-      <label class="profile-label" for="profile-birth-time">जन्म समय</label>
-      <input type="time" id="profile-birth-time" class="profile-input">
+      <div class="profile-dt-row">
+        <div class="profile-dt-field">
+          <label class="profile-label" for="profile-birth-date">जन्म तिथि</label>
+          <input type="text" id="profile-birth-date" class="profile-input" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" autocomplete="bday" oninput="profileFormatDateInput(this)">
+        </div>
+        <div class="profile-dt-field">
+          <label class="profile-label" for="profile-birth-time">जन्म समय</label>
+          <input type="time" id="profile-birth-time" class="profile-input">
+        </div>
+      </div>
       <label class="profile-check-row">
-        <input type="checkbox" id="profile-birth-time-unknown" onchange="document.getElementById('profile-birth-time').disabled=this.checked;">
-        <span>मुझे सही जन्म समय नहीं पता (लगभग 12:00 मान लें)</span>
+        <input type="checkbox" id="profile-birth-time-unknown" onchange="var t=document.getElementById('profile-birth-time'); if(this.checked){t.value='07:00';} t.disabled=this.checked;">
+        <span>सही जन्म समय नहीं पता होने पर प्रातः 7:00 बजे मान लें</span>
       </label>
 
       <div id="profile-modal-error" class="profile-error" style="display:none;"></div>
 
       <div class="profile-modal-actions">
-        <button type="button" class="profile-btn-secondary" onclick="closeProfileModal()">रद्द करें</button>
-        <button type="button" class="profile-btn-primary" onclick="saveProfileModal()">सहेजें</button>
+        <button type="button" class="profile-btn-secondary" onclick="closeProfileModal()">Cancel</button>
+        <button type="button" class="profile-btn-primary" onclick="saveProfileModal()">Save</button>
       </div>
     </div>
   </div>
@@ -631,7 +558,7 @@
     </div>
   </div>
 
-<script src="panchang.js?v=20261115"></script>
-<script src="tour.js"></script>
+<script src="panchang.js?v=20261116i"></script>
+<script src="tour.js?v=20261116d"></script>
 </body>
 </html>
