@@ -1,18 +1,18 @@
 /* ============================================================================
-   TABLE OF CONTENTS — PANCHANG MODULE — Sun/Moon astronomy, Tithi/Nakshatra/Yoga/Karana,
-   Rahu Kaal, Choghadiya, GPS location handling
-   (line numbers below are within THIS file, counting from this comment)
-   ============================================================================
-      20 | Small astronomy toolkit (Meeus low-precision Sun/Moon)
-      83 | Local mean solar time helpers
-     159 | Panchang element names (Hindi)
-     434 | Rahu Kaal / Yamagandam / Gulika Kaal — divide sunrise→sunset into 8 equal parts
-     495 | Choghadiya
-     532 | Location handling
-     555 | चंद्रबल / ताराबल
-    1003 | GPS location: due-process flow
-   ============================================================================
-*/
+   PANCHANG MODULE — sections of this file, in order (search for the heading):
+     • Small astronomy toolkit          Meeus low-precision Sun/Moon longitudes, Moon rise/set
+     • Time helpers                     fmtTime, local-time conversion
+     • Panchang element names (Hindi)   Tithi / Nakshatra / Yoga / Karana / Rashi / Ritu / Ayan / Masa
+     • Next-transition finders          findNextChange and its two callers
+     • Rahu Kaal / Yamagandam / Gulika, Abhijit, Brahma Muhurt, Bhadra
+     • Choghadiya
+     • Location handling                PCH state, profile/birth storage, Chandrabal / Tarabal
+     • GPS location: due-process flow, geocoding, sun-times fetch
+     • VRAT / TYOHAR and PUBLIC HOLIDAYS modules
+     • pchRunCalculation                the one render pipeline
+     • ELEMENT DETAIL PAGE              tap-for-timeline
+     • (outside the IIFE) page switching, profile modal + photo crop, settings, footers
+   ============================================================================ */
 
 
 (function(){
@@ -262,15 +262,14 @@
     const idx = Math.floor(norm360(siderealSun + siderealMoon) / (360/27));
     return YOGA_NAMES[idx];
   }
-  function getKarana(sun, moon) {
-    const diff = norm360(moon - sun);
-    const idx = Math.floor(diff / 6); // 0-59
+  function karanaName(idx) {            // karana-index (0–59) → name
     if (idx === 0) return KARANA_NAMES[0];
     if (idx === 57) return KARANA_NAMES[8];
     if (idx === 58) return KARANA_NAMES[9];
     if (idx === 59) return KARANA_NAMES[10];
     return KARANA_NAMES[1 + ((idx - 1) % 7)];
   }
+  function getKarana(sun, moon) { return karanaName(Math.floor(norm360(moon - sun) / 6)); }
   function vikramSamvat(date) {
     const y = date.getFullYear(), m = date.getMonth() + 1;
     return (m >= 4 ? y + 57 : y + 56);
@@ -404,7 +403,7 @@
   // scheme the month name carries over from the preceding Purnima until
   // the next one (e.g. Amanta Ashwin Krishna Paksha = Purnimanta Kartik
   // Krishna Paksha, as with Diwali).
-  function getPurnimantMasa(sunTropicalLong, jd, tithiIndex) {
+  function getPurnimantMasa(jd, tithiIndex) {
     let idx = amantaMasaIndexFixed(jd);
     if (tithiIndex >= 15) idx = (idx + 1) % 12;
     return MASA_NAMES[idx];
@@ -421,11 +420,10 @@
   /* ── Next-transition finder for Tithi/Nakshatra/Yoga/Karana ──
      Scans forward in 5-min steps (up to ~2 days) for the index (as returned
      by indexFn(jd)) to change, then bisects to refine the crossing time. */
-  function findNextTransition(jdNow, indexFn) {
+  function findNextChange(jdNow, indexFn, stepDays, maxIter) {
     const startIdx = indexFn(jdNow);
-    const stepDays = 5 / 1440;
     let jd = jdNow;
-    for (let i = 0; i < 600; i++) {
+    for (let i = 0; i < maxIter; i++) {
       jd += stepDays;
       if (indexFn(jd) !== startIdx) {
         let lo = jd - stepDays, hi = jd;
@@ -438,6 +436,7 @@
     }
     return null;
   }
+  function findNextTransition(jdNow, indexFn) { return findNextChange(jdNow, indexFn, 5 / 1440, 600); }
   function tithiIndexAt(jd) {
     const { sun, moon } = sunMoonLongitudes(jd);
     return Math.floor(norm360(moon - sun) / 12);
@@ -467,22 +466,7 @@
   // also changes only at a Paksha boundary, so ~15 days max) — scans in
   // 6-hour steps up to maxDays out, then bisects for a precise crossing.
   function findNextTransitionSlow(jdNow, indexFn, maxDays) {
-    const startIdx = indexFn(jdNow);
-    const stepDays = 0.25;
-    let jd = jdNow;
-    const maxIter = Math.ceil((maxDays || 20) / stepDays);
-    for (let i = 0; i < maxIter; i++) {
-      jd += stepDays;
-      if (indexFn(jd) !== startIdx) {
-        let lo = jd - stepDays, hi = jd;
-        for (let b = 0; b < 20; b++) {
-          const mid = (lo + hi) / 2;
-          if (indexFn(mid) === startIdx) lo = mid; else hi = mid;
-        }
-        return hi;
-      }
-    }
-    return null;
+    return findNextChange(jdNow, indexFn, 0.25, Math.ceil((maxDays || 20) / 0.25));
   }
   // Next Ritu transition: the Sun's tropical longitude next crosses one of
   // the six 30°/90°/150°/210°/270°/330° boundaries (see drikRituIndexAt).
@@ -577,36 +561,95 @@
   // PREVIOUS day's night (it runs from yesterday's sunset to today's sunrise and
   // follows yesterday's weekday sequence), so a calendar day is really covered
   // by three spans: prevNight (yesterday's sunset -> today's sunrise), day, night.
+  function choghSlots(seq, from, to) {
+    const part = (to - from) / 8;
+    return seq.map((name, i) => ({
+      name,
+      start: new Date(from.getTime() + i * part),
+      end: new Date(from.getTime() + (i + 1) * part)
+    }));
+  }
   function buildChoghadiya(sunrise, sunset, nextSunrise, weekdayIdx, prevSunset) {
     const prevWeekdayIdx = (weekdayIdx + 6) % 7;
-    const prevNightRows = [];
-    if (prevSunset && prevSunset < sunrise) {
-      const prevNightPart = (sunrise - prevSunset) / 8;
-      CHOGH_NIGHT_SEQ[prevWeekdayIdx].forEach((name, i) => {
-        prevNightRows.push({
-          name,
-          start: new Date(prevSunset.getTime() + i * prevNightPart),
-          end: new Date(prevSunset.getTime() + (i+1) * prevNightPart)
-        });
-      });
-    }
-    const dayPart = (sunset - sunrise) / 8;
-    const dayRows = CHOGH_DAY_SEQ[weekdayIdx].map((name, i) => {
-      const start = new Date(sunrise.getTime() + i * dayPart);
-      const end = new Date(sunrise.getTime() + (i+1) * dayPart);
-      return { name, start, end };
-    });
-    const nightPart = (nextSunrise - sunset) / 8;
-    const nightRows = CHOGH_NIGHT_SEQ[weekdayIdx].map((name, i) => {
-      const start = new Date(sunset.getTime() + i * nightPart);
-      const end = new Date(sunset.getTime() + (i+1) * nightPart);
-      return { name, start, end };
-    });
-    return { prevNightRows, dayRows, nightRows };
+    return {
+      prevNightRows: (prevSunset && prevSunset < sunrise) ? choghSlots(CHOGH_NIGHT_SEQ[prevWeekdayIdx], prevSunset, sunrise) : [],
+      dayRows: choghSlots(CHOGH_DAY_SEQ[weekdayIdx], sunrise, sunset),
+      nightRows: choghSlots(CHOGH_NIGHT_SEQ[weekdayIdx], sunset, nextSunrise)
+    };
   }
 
   /* ── Location handling ── */
   let PCH = { lat: null, lon: null, name: '', state: '', tzOffsetMin: 330, customDateTime: null }; // default IST offset fallback; customDateTime null = live "now"
+
+
+  /* ── Busy overlay (glass blur + animated icon) ──
+     Shown only for user-initiated work: GPS lookup, city search and the
+     calculation that follows. Silent 60-second background refreshes never
+     show it. Overlay appears instantly, stays at least MIN_MS so a cached
+     (instant) calculation doesn't flash, then fades out. */
+  const pchBusy = (function () {
+    const MIN_MS = 420, FAILSAFE_MS = 30000;
+    const STAGES = {
+      gps:    { icon: 'gps',    title: 'आपका स्थान पता किया जा रहा है',   sub: 'GPS से लोकेशन ली जा रही है…' },
+      search: { icon: 'search', title: 'स्थान खोजा जा रहा है',            sub: 'कृपया प्रतीक्षा करें…' },
+      sun:    { icon: 'sun',    title: 'पंचांग तैयार हो रहा है',           sub: 'सूर्योदय / सूर्यास्त का समय लिया जा रहा है…' },
+      calc:   { icon: 'moon',   title: 'पंचांग की गणना हो रही है',         sub: 'तिथि, नक्षत्र, योग व करण निकाले जा रहे हैं…' }
+    };
+    const ICONS = {
+      gps: '<svg viewBox="0 0 64 64" class="pchb-svg"><circle class="pchb-ring r1" cx="32" cy="34" r="8"/><circle class="pchb-ring r2" cx="32" cy="34" r="8"/><g class="pchb-pin"><path d="M32 8c-8.8 0-16 6.9-16 15.5C16 35 32 54 32 54s16-19 16-30.5C48 14.9 40.8 8 32 8z"/><circle cx="32" cy="23.5" r="6" class="pchb-hole"/></g></svg>',
+      search: '<svg viewBox="0 0 64 64" class="pchb-svg"><g class="pchb-lens"><circle cx="28" cy="28" r="14" class="pchb-lens-ring"/><path d="M38.5 38.5L53 53" class="pchb-handle"/></g></svg>',
+      sun: '<svg viewBox="0 0 64 64" class="pchb-svg"><g class="pchb-rays">' +
+           [0,45,90,135,180,225,270,315].map(function (a) { return '<path d="M32 6v8" transform="rotate(' + a + ' 32 32)"/>'; }).join('') +
+           '</g><circle cx="32" cy="32" r="11" class="pchb-sun"/></svg>',
+      moon: '<svg viewBox="0 0 64 64" class="pchb-svg"><circle cx="32" cy="32" r="22" class="pchb-orbit"/><g class="pchb-spin"><circle cx="32" cy="10" r="5" class="pchb-dot"/></g><path class="pchb-moon" d="M36 16a16 16 0 1 0 12 26A13 13 0 0 1 36 16z"/></svg>'
+    };
+    let el = null, shownAt = 0, active = false, stage = '', hideTimer = null, failsafe = null;
+
+    function build() {
+      if (el) return el;
+      el = document.createElement('div');
+      el.id = 'pch-busy';
+      el.setAttribute('role', 'status');
+      el.setAttribute('aria-live', 'polite');
+      el.innerHTML = '<div class="pchb-card"><div class="pchb-icon"></div>' +
+        '<div class="pchb-title"></div><div class="pchb-sub"></div>' +
+        '<div class="pchb-bar"><i></i></div></div>';
+      document.body.appendChild(el);
+      return el;
+    }
+    function paint(name, titleOverride) {
+      const st = STAGES[name]; if (!st) return;
+      build();
+      if (stage !== name) {
+        stage = name;
+        el.querySelector('.pchb-icon').innerHTML = ICONS[st.icon];
+      }
+      el.querySelector('.pchb-title').textContent = titleOverride || st.title;
+      el.querySelector('.pchb-sub').textContent = st.sub;
+    }
+    return {
+      isActive: function () { return active; },
+      show: function (name, titleOverride) {
+        build();
+        clearTimeout(hideTimer);
+        paint(name, titleOverride);
+        if (!active) { active = true; shownAt = Date.now(); el.classList.remove('out'); void el.offsetWidth; el.classList.add('on'); }
+        clearTimeout(failsafe);
+        failsafe = setTimeout(function () { pchBusy.hide(true); }, FAILSAFE_MS);
+      },
+      set: function (name) { if (active) paint(name); },
+      hide: function (now) {
+        if (!active) return;
+        clearTimeout(failsafe);
+        const wait = now ? 0 : Math.max(0, MIN_MS - (Date.now() - shownAt));
+        clearTimeout(hideTimer);
+        hideTimer = setTimeout(function () {
+          active = false;
+          el.classList.remove('on'); el.classList.add('out');
+        }, wait);
+      }
+    };
+  })();
   let pchLastChogh = null; // { prevNightRows, dayRows, nightRows } from the most recent calculation
 
   // Home card: the Choghadiya running right now plus the next three.
@@ -669,13 +712,22 @@
   const CHANDRABALAM_GOOD_HOUSES = [1,3,6,7,10,11]; // house-from-janma-rashi considered auspicious
   const TARA_NAMES = ['जन्म','संपत','विपत','क्षेम','प्रत्यक्','साधक','वध (नैधन)','मित्र','परम मित्र'];
   const TARA_GOOD  = [false, true, false, true, false, true, false, true, true];
+  function balamHouse(rashiIdx, birthRashiIdx) { return ((rashiIdx - birthRashiIdx + 12) % 12) + 1; }
+  function isGoodHouse(house) { return CHANDRABALAM_GOOD_HOUSES.indexOf(house) !== -1; }
+  function taraIndex(nakIdx, birthNakIdx) { return (nakIdx - birthNakIdx + 27) % 9; }   // 27 is a multiple of 9
 
   function pchBirthStorageKey() {
-    const regNo = 'panchang-user';
-    return 'pch_birth_' + regNo;
+    return 'pch_birth_panchang-user';
   }
   function pchProfileStorageKey() {
     return 'pch_profile_panchang-user';
+  }
+
+  // Older profiles stored one fullName; split it at the last space (first name, last name).
+  function pchSplitName(full) {
+    full = String(full || '').trim();
+    const i = full.lastIndexOf(' ');
+    return i === -1 ? { firstName: full, lastName: '' } : { firstName: full.slice(0, i).trim(), lastName: full.slice(i + 1).trim() };
   }
 
   // Unified local-only profile (name, photo, birth). Migrates legacy birth key.
@@ -685,8 +737,10 @@
       if (raw) {
         const p = JSON.parse(raw);
         if (p && typeof p === 'object') {
+          const legacyName = (p.firstName == null && p.lastName == null) ? pchSplitName(p.fullName) : null;
           return {
-            fullName: p.fullName || '',
+            firstName: legacyName ? legacyName.firstName : (p.firstName || ''),
+            lastName: legacyName ? legacyName.lastName : (p.lastName || ''),
             photo: p.photo || '',
             birthDate: p.birthDate || '',
             birthTime: p.birthTime || '12:00'
@@ -701,7 +755,8 @@
         const saved = JSON.parse(legacy);
         if (saved && saved.birthDate) {
           return {
-            fullName: '',
+            firstName: '',
+            lastName: '',
             photo: '',
             birthDate: saved.birthDate,
             birthTime: saved.birthTime || '12:00'
@@ -709,14 +764,15 @@
         }
       }
     } catch (e) { /* ignore */ }
-    return { fullName: '', photo: '', birthDate: '', birthTime: '12:00' };
+    return { firstName: '', lastName: '', photo: '', birthDate: '', birthTime: '12:00' };
   }
 
   function pchSaveProfile(profile) {
     try {
       const prev = pchGetProfile();
       const next = {
-        fullName: profile.fullName != null ? profile.fullName : prev.fullName,
+        firstName: profile.firstName != null ? profile.firstName : prev.firstName,
+        lastName: profile.lastName != null ? profile.lastName : prev.lastName,
         photo: profile.photo != null ? profile.photo : prev.photo,
         birthDate: profile.birthDate != null ? profile.birthDate : prev.birthDate,
         birthTime: profile.birthTime != null ? profile.birthTime : prev.birthTime
@@ -742,10 +798,6 @@
     return null;
   }
 
-  function pchSaveBirthDetails(birthDate, birthTime) {
-    pchSaveProfile({ birthDate: birthDate, birthTime: birthTime || '12:00' });
-  }
-
   window.pchGetProfile = pchGetProfile;
   window.pchSaveProfile = pchSaveProfile;
 
@@ -769,43 +821,6 @@
     return { rashiIdx: rashiIdx, nakshatraIdx: nakshatraIdx };
   }
 
-  // Romanized names for the birth-Panchang details ("Janm Tithi",
-  // "Nakshatra", "Rashi" rows), e.g. tithi: "Margshirsha Shukla Chaturdashi
-  // V.S. 2041", nakshatra: "Krutika", rashi: "Mesh". Exposed on window so
-  // the profile-page script (a separate <script> block/scope) can call it
-  // without duplicating the astronomy toolkit.
-  const _JT_MASA_EN = ['Chaitra','Vaishakh','Jyeshtha','Ashadh','Shravan','Bhadrapad','Ashwin','Kartik','Margshirsha','Paush','Magh','Phalgun'];
-  const _JT_TITHI_EN = ['Pratipada','Dwitiya','Tritiya','Chaturthi','Panchami','Shashthi','Saptami','Ashtami','Navami','Dashami','Ekadashi','Dwadashi','Trayodashi','Chaturdashi'];
-  const _JT_NAKSHATRA_EN = ['Ashwini','Bharani','Krutika','Rohini','Mrigashira','Ardra','Punarvasu','Pushya','Ashlesha','Magha','Purva Phalguni','Uttara Phalguni','Hasta','Chitra','Swati','Vishakha','Anuradha','Jyeshtha','Mula','Purva Ashadha','Uttara Ashadha','Shravana','Dhanishtha','Shatabhisha','Purva Bhadrapada','Uttara Bhadrapada','Revati'];
-  const _JT_RASHI_EN = ['Mesh','Vrishabh','Mithun','Kark','Simha','Kanya','Tula','Vrishchik','Dhanu','Makar','Kumbh','Meen'];
-  window.pchComputeJanmTithi = function(birthDate, birthTime) {
-    if (!birthDate) return null;
-    const [y, mo, d] = birthDate.split('-').map(Number);
-    const [hh, mm] = (birthTime || '12:00').split(':').map(Number);
-    const istMinutes = hh * 60 + mm;
-    const utcDate = new Date(Date.UTC(y, mo - 1, d, 0, 0, 0) + (istMinutes - 330) * 60000);
-    const jdBirth = julianDay(utcDate);
-    const sun = sunLongitude(jdBirth);
-    const moon = moonLongitude(jdBirth);
-    const tithi = getTithi(sun, moon); // { name, index (0-29), paksha }
-    const pakshaEn = tithi.index < 15 ? 'Shukla' : 'Krishna';
-    const tithiInPaksha = tithi.index % 15; // 0-14
-    const tithiEn = tithiInPaksha === 14 ? (tithi.index < 15 ? 'Purnima' : 'Amavasya') : _JT_TITHI_EN[tithiInPaksha];
-    let masaIdx = amantaMasaIndexFixed(jdBirth);
-    if (tithi.index >= 15) masaIdx = (masaIdx + 1) % 12;
-    const samvat = (mo >= 4 ? y + 57 : y + 56);
-    const nakIdx = nakshatraIndexAt(jdBirth);
-    const rashiIdx = chandraRashiIndexAt(jdBirth);
-    return {
-      tithi: _JT_MASA_EN[masaIdx] + ' ' + pakshaEn + ' ' + tithiEn + ' V.S. ' + samvat,
-      nakshatra: _JT_NAKSHATRA_EN[nakIdx],
-      rashi: _JT_RASHI_EN[rashiIdx],
-      tithiHi: MASA_NAMES[masaIdx] + ' ' + tithi.paksha + ' ' + TITHI_NAMES[tithi.index] + ' वि.सं. ' + samvat,
-      nakshatraHi: NAKSHATRA_NAMES[nakIdx],
-      rashiHi: RASHI_NAMES[rashiIdx]
-    };
-  };
-
   function pchRenderBalam(chandraRashiIdx, currentNakshatraIdx) {
     const chandEl = document.getElementById('pch-chandrabalam');
     const taraEl = document.getElementById('pch-tarabalam');
@@ -814,104 +829,24 @@
     const birth = pchGetBirthDetails();
     const idx = birth ? pchBirthIndices(birth.birthDate, birth.birthTime) : null;
     if (!idx) {   // nothing saved, or what is saved can't be used → ask (again)
-      const prompt = '<a href="javascript:void(0)" onclick="pchOpenBirthModal()" style="color:var(--gold,#B8860B); text-decoration:underline;">जन्म विवरण दर्ज करें</a>';
+      const prompt = '<a href="javascript:void(0)" onclick="openProfileModal()" style="color:var(--gold,#B8860B); text-decoration:underline;">जन्म विवरण दर्ज करें</a>';
       chandEl.innerHTML = prompt;
       taraEl.innerHTML = prompt;
       return;
     }
 
-    const house = ((chandraRashiIdx - idx.rashiIdx + 12) % 12) + 1;
-    const chandGood = CHANDRABALAM_GOOD_HOUSES.indexOf(house) !== -1;
+    const house = balamHouse(chandraRashiIdx, idx.rashiIdx);
+    const chandGood = isGoodHouse(house);
     chandEl.innerHTML = '<span style="color:' + (chandGood ? '#1E7A4A' : '#B23A2E') + ';">' +
       (chandGood ? 'शुभ' : 'अशुभ') + '</span> (' + house + 'वां भाव)';
 
-    const taraCount = ((currentNakshatraIdx - idx.nakshatraIdx + 27) % 27) + 1;
-    const taraIdx = (taraCount - 1) % 9;
+    const taraIdx = taraIndex(currentNakshatraIdx, idx.nakshatraIdx);
     const taraGood = TARA_GOOD[taraIdx];
     taraEl.innerHTML = TARA_NAMES[taraIdx] + ' <span style="color:' + (taraGood ? '#1E7A4A' : '#B23A2E') + ';">(' +
       (taraGood ? 'शुभ' : 'अशुभ') + ')</span>';
   }
 
-  window.pchOpenBirthModal = function() {
-    const birth = pchGetBirthDetails();
-    const dateEl = document.getElementById('pch-birth-date');
-    const timeEl = document.getElementById('pch-birth-time');
-    const unknownEl = document.getElementById('pch-birth-time-unknown');
-    if (dateEl) dateEl.value = birth ? profileIsoToDmy(birth.birthDate) : '';
-    if (timeEl) { timeEl.value = birth ? birth.birthTime : ''; timeEl.disabled = false; }
-    if (unknownEl) unknownEl.checked = false;
-    const errEl = document.getElementById('pch-birth-modal-error');
-    if (errEl) errEl.style.display = 'none';
-    const modal = document.getElementById('pch-birth-modal');
-    if (modal) modal.style.display = 'flex';
-  };
-
-  window.pchSkipBirthModal = function() {
-    const modal = document.getElementById('pch-birth-modal');
-    if (modal) modal.style.display = 'none';
-  };
-
-  window.pchSaveBirthModal = function() {
-    const dateEl = document.getElementById('pch-birth-date');
-    const timeEl = document.getElementById('pch-birth-time');
-    const unknownEl = document.getElementById('pch-birth-time-unknown');
-    const errEl = document.getElementById('pch-birth-modal-error');
-    const birthIso = profileDmyToIso(dateEl.value.trim());
-    if (!birthIso) {
-      if (errEl) errEl.style.display = 'block';
-      return;
-    }
-    const birthTime = (unknownEl && unknownEl.checked) ? '12:00' : (timeEl.value || '12:00');
-    pchSaveBirthDetails(birthIso, birthTime);
-    const modal = document.getElementById('pch-birth-modal');
-    if (modal) modal.style.display = 'none';
-    if (typeof window.pchRunCalculation === 'function' && PCH.lat !== null) window.pchRunCalculation();
-  };
-
-  // Prompt only once the चंद्रबल/ताराबल section actually scrolls into
-  // view — not immediately on page open — and only if the profile doesn't
-  // already have birth details saved.
-  let pchBirthModalAutoShown = false;
-  let pchBalamSectionObserver = null;
-  function pchTourHoldsPrompt() {
-    try {
-      return !!(window.spTourActive || (typeof window.spTourPending === 'function' && window.spTourPending()));
-    } catch (e) { return false; }   // a broken tour must not block the prompt
-  }
-  function pchInitBalamSectionObserver() {
-    if (pchBalamSectionObserver || pchBirthModalAutoShown) return;
-    const target = document.getElementById('pch-chandrabalam');
-    const section = target && target.closest('.about-section');
-    if (!section) return;
-    pchBalamSectionObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        // the product tour goes first; it calls pchResumeBalamPrompt() when it is done
-        if (pchTourHoldsPrompt()) return;
-        if (entry.isIntersecting && !pchBirthModalAutoShown) {
-          if (!pchGetBirthDetails()) {
-            pchBirthModalAutoShown = true;
-            window.pchOpenBirthModal();
-          } else {
-            pchBirthModalAutoShown = true; // details already exist, no need to keep observing
-          }
-          pchBalamSectionObserver.disconnect();
-        }
-      });
-    }, { threshold: 0.4 });
-    pchBalamSectionObserver.observe(section);
-  }
-  // The product tour suppresses the prompt while it runs; when it ends it calls
-  // this to re-observe, which re-evaluates whether the section is in view now.
-  window.pchResumeBalamPrompt = function () {
-    if (pchBalamSectionObserver && !pchBirthModalAutoShown) {
-      pchBalamSectionObserver.disconnect();
-      pchBalamSectionObserver = null;
-      pchInitBalamSectionObserver();
-    }
-  };
-
   let pchRefreshTimer = null;
-  let pchClockTimer = null;
   let pchPageObserver = null;
   let pchWasVisible = false;
 
@@ -924,37 +859,8 @@
     return true;
   }
 
-  // .about-card (the wrapper around the Muhurat grid, Panchang tattva,
-  // Chandrabalam/Tarabalam etc.) uses a translucent background *plus*
-  // backdrop-filter: blur() for the "liquid glass" look. Chromium has a
-  // known compositing bug where a layer like this fails to repaint right
-  // when it's first created or right when a background tab/app regains
-  // visibility — the correct content is genuinely sitting in the DOM (a
-  // DevTools inspection would show it), it just never gets painted, so the
-  // card looks like an empty gap until something unrelated (a scroll, a
-  // resize) happens to force a repaint. Both "right after opening" and
-  // "after the app was idle" — the two triggers reported — are exactly
-  // when this bug fires.
-  //
-  // Toggling `transform` (rather than `display`) forces that repaint: a
-  // transform never affects box layout — the card's height/position, and
-  // everything around it, stays exactly where it was — so this can never
-  // shift the page's scroll position or cause any visible jump/flash. It
-  // only forces the browser to regenerate that one composited layer, which
-  // is all this bug actually needs to be fixed silently, in the background.
-  function pchForceRepaint() {
-    const el = document.getElementById('pch-content');
-    if (!el || el.style.display === 'none') return;
-    el.querySelectorAll('.about-card').forEach(function (card) {
-      card.style.transform = 'translateZ(0)';
-      void card.offsetHeight; // forces the paint recalculation synchronously
-      card.style.transform = '';
-    });
-  }
-
   function pchStopTimers() {
     if (pchRefreshTimer) { clearTimeout(pchRefreshTimer); pchRefreshTimer = null; }
-    if (pchClockTimer) { clearInterval(pchClockTimer); pchClockTimer = null; }
   }
 
   function pchStartTimers() {
@@ -974,22 +880,6 @@
       }, msToNextMinute);
     }
     scheduleNextMinuteTick();
-    // Lightweight live clock tick every second, independent of the heavy
-    // astronomy recompute, so it's visibly obvious the page is live.
-    // Frozen (showing the selected timestamp instead) when a custom
-    // date/time override is active.
-    pchClockTimer = setInterval(() => {
-      if (!pchIsPageVisible()) { pchStopTimers(); return; }
-      const clockEl = document.getElementById('pch-live-clock');
-      if (clockEl) {
-        const tz = PCH.tzOffsetMin || 330;
-        if (PCH.customDateTime) {
-          clockEl.textContent = 'चयनित समय: ' + fmtTime(PCH.customDateTime, tz);
-        } else {
-          clockEl.textContent = 'वर्तमान समय: ' + fmtTime(new Date(), tz) + ':' + String(new Date().getSeconds()).padStart(2,'0');
-        }
-      }
-    }, 1000);
   }
 
   // Any code path that makes #page-panchang visible (button click, back
@@ -1020,9 +910,10 @@
     });
   }
 
-  window.pchManualRefresh = function() {
-    if (PCH.lat === null) { pchSetStatus('कृपया पहले स्थान चुनें।', true); return; }
-    pchRunCalculation();
+  // Re-run the calculation if a location is already chosen. Exposed because the
+  // profile code below lives outside this closure and cannot see PCH.
+  window.pchRecalcIfReady = function() {
+    if (PCH.lat !== null) pchRunCalculation();
   };
 
   window.showPanchang = function() {
@@ -1038,10 +929,9 @@
     }
     pchWasVisible = true;
     pchStartTimers();
-    pchInitBalamSectionObserver();
   };
 
-  function pchShowLocationBar(dateUsed) {
+  function pchShowLocationBar() {
     const bar = document.getElementById('pch-badle-bar');
     const sec = document.getElementById('pch-location-section');
     if (bar) bar.style.display = 'flex';
@@ -1087,6 +977,7 @@
       pchSetStatus('कृपया पहले ऊपर से कोई स्थान चुनें।', true);
       return;
     }
+    pchBusy.show('calc');
     pchRunCalculation();
   };
 
@@ -1094,7 +985,7 @@
   window.pchResetToLiveDateTime = function() {
     PCH.customDateTime = null;
     pchPrefillDateTimeInputs();
-    if (PCH.lat !== null) pchRunCalculation();
+    if (PCH.lat !== null) { pchBusy.show('calc'); pchRunCalculation(); }
   };
 
   window.pchOpenLocationSelector = function() {
@@ -1127,16 +1018,7 @@
     const dtBlock = document.getElementById('pch-datetime-block');
     if (dtBlock) dtBlock.style.display = showDateTime ? '' : 'none';
     pchPrefillDateTimeInputs();
-    pchRenderProfileLocationBtns();
   }
-
-  // Builds the profile-city buttons shown in the location selector, using
-  // the user's actual saved city names (not a generic "Profile — current
-  // city" placeholder). A button is only shown for a city that is really
-  // saved in the profile; if only one of current/native city is saved,
-  // only that one button appears. If both are saved but are the same
-  // place, only one button is shown (avoids a duplicate).
-  function pchRenderProfileLocationBtns() { /* profile cities removed */ }
 
   // ── GPS location: due-process flow ──
   // 1. Secure-context check (geolocation is blocked entirely on non-HTTPS
@@ -1145,14 +1027,16 @@
   //    the *right* message (e.g. "enable permission" vs "enable device
   //    GPS") instead of one generic failure message.
   // 3. On any failure, the location-selector section (hidden by default)
-  //    is revealed so the user can retry GPS or fall back to a saved
-  //    profile city / manual entry.
+  //    is revealed so the user can retry GPS or enter a city manually.
 
   function pchGpsFallbackHint() {
-    return ' कृपया नीचे प्रोफ़ाइल स्थान चुनें या शहर मैन्युअल रूप से लिखें।';
+    return ' कृपया नीचे शहर मैन्युअल रूप से लिखें।';
   }
 
+  const PCH_GPS_DENIED_MSG = 'GPS location की अनुमति अवरुद्ध है। कृपया अनुमति देने के लिए मोबाइल की सेटिंग्स में जाएं और एप्लिकेशन की GPS location को अनुमति दें। अथवा नीचे शहर मैन्युअल रूप से लिखें।';
+
   function pchFailGps(msg, wasAuto) {
+    pchBusy.hide(true);
     if (wasAuto) pchShowGpsLoading(false);
     pchRevealLocationSection(false);
     pchSetStatus(msg, true);
@@ -1168,13 +1052,14 @@
     // second, redundant network round-trip before the page can show data.)
     if (wasAuto) pchShowGpsLoading(false);
     pchSetStatus('स्थान मिल गया: वर्तमान GPS स्थान (' + PCH.lat.toFixed(3) + ', ' + PCH.lon.toFixed(3) + ')');
+    pchBusy.show('sun');
     pchRunCalculation();
   }
 
   function pchHandleGpsError(err, wasAuto) {
     let msg;
     if (err && err.code === err.PERMISSION_DENIED) {
-      msg = 'GPS location की अनुमति अवरुद्ध है। कृपया अनुमति देने के लिए मोबाइल की सेटिंग्स में जाएं और एप्लिकेशन की GPS location को अनुमति दें। अथवा नीचे प्रोफ़ाइल स्थान चुनें या शहर मैन्युअल रूप से लिखें।';
+      msg = PCH_GPS_DENIED_MSG;
     } else if (err && err.code === err.POSITION_UNAVAILABLE) {
       msg = 'स्थान की जानकारी नहीं मिल पाई। कृपया अपने डिवाइस की लोकेशन सेवा (GPS) चालू करें और दोबारा प्रयास करें।' + pchGpsFallbackHint();
     } else if (err && err.code === err.TIMEOUT) {
@@ -1188,15 +1073,21 @@
   // wasAuto = true when this was the silent attempt on page-open (loading
   // indicator + no location-selector shown yet); false when the user
   // explicitly tapped "वर्तमान GPS स्थान" from the already-visible selector.
-  function pchRequestGPS(wasAuto) {
+  // Geolocation can't work at all without the API or a secure (HTTPS) page —
+  // report that once, here, for both the silent and the user-initiated path.
+  function pchGpsUnavailable(wasAuto) {
     if (!navigator.geolocation) {
       pchFailGps('इस डिवाइस/ब्राउज़र पर GPS उपलब्ध नहीं है।' + pchGpsFallbackHint(), wasAuto);
-      return;
+      return true;
     }
     if (window.isSecureContext === false) {
       pchFailGps('GPS केवल सुरक्षित (HTTPS) पेज पर काम करता है।' + pchGpsFallbackHint(), wasAuto);
-      return;
+      return true;
     }
+    return false;
+  }
+  function pchRequestGPS(wasAuto) {
+    if (pchGpsUnavailable(wasAuto)) return;
     if (!wasAuto) pchSetStatus('आपका स्थान पता किया जा रहा है…');
     navigator.geolocation.getCurrentPosition(
       (pos) => pchHandleGpsSuccess(pos, wasAuto),
@@ -1212,19 +1103,13 @@
   // they've already denied it — instead the selector is revealed right
   // away with a clear explanation.
   function pchAutoFetchGPS() {
+    pchBusy.show('gps');
     pchShowGpsLoading(true);
-    if (!navigator.geolocation) {
-      pchFailGps('इस डिवाइस/ब्राउज़र पर GPS उपलब्ध नहीं है।' + pchGpsFallbackHint(), true);
-      return;
-    }
-    if (window.isSecureContext === false) {
-      pchFailGps('GPS केवल सुरक्षित (HTTPS) पेज पर काम करता है।' + pchGpsFallbackHint(), true);
-      return;
-    }
+    if (pchGpsUnavailable(true)) return;
     if (navigator.permissions && navigator.permissions.query) {
       navigator.permissions.query({ name: 'geolocation' }).then((status) => {
         if (status.state === 'denied') {
-          pchFailGps('GPS location की अनुमति अवरुद्ध है। कृपया अनुमति देने के लिए मोबाइल की सेटिंग्स में जाएं और एप्लिकेशन की GPS location को अनुमति दें। अथवा नीचे प्रोफ़ाइल स्थान चुनें या शहर मैन्युअल रूप से लिखें।', true);
+          pchFailGps(PCH_GPS_DENIED_MSG, true);
           return;
         }
         // 'granted' or 'prompt' — safe to ask; browser shows native
@@ -1241,11 +1126,8 @@
 
   window.pchUseGPS = function() {
     pchCaptureDateTimeInputs();
+    pchBusy.show('gps');
     pchRequestGPS(false);
-  };
-
-  window.pchUseProfileLocation = async function(which) {
-    pchSetStatus('प्रोफ़ाइल स्थान उपलब्ध नहीं है। कृपया मैन्युअल रूप से शहर लिखें।', true);
   };
 
   window.pchShowManualEntry = function() {
@@ -1257,39 +1139,28 @@
     const val = document.getElementById('pch-manual-input').value.trim();
     if (!val) { pchSetStatus('कृपया शहर का नाम लिखें।', true); return; }
     pchSetStatus(val + ' खोजा जा रहा है…');
-    await pchGeocode(val, {});
+    pchBusy.show('search', '“' + val + '” खोजा जा रहा है');
+    await pchGeocode(val);
   };
 
-  async function pchGeocode(query, opts) {
-    opts = opts || {};
+  async function pchGeocode(query) {
     try {
       const res = await fetch('https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(query) + '&count=10&language=en&format=json', { cache: 'no-store' });
       const data = await res.json();
-      let results = data.results || [];
-      if (!results.length && opts.fallbackQuery) {
-        await pchGeocode(opts.fallbackQuery, { preferState: opts.preferState, preferCountry: opts.preferCountry });
-        return;
-      }
+      const results = data.results || [];
       if (!results.length) {
+        pchBusy.hide(true);
         pchSetStatus('स्थान नहीं मिला। कृपया दूसरा नाम आज़माएँ।', true);
         return;
       }
-      let r = results[0];
-      if (opts.preferCountry) {
-        const byCountry = results.filter(x => (x.country || '').toLowerCase() === opts.preferCountry.toLowerCase());
-        if (byCountry.length) {
-          r = byCountry[0];
-          if (opts.preferState) {
-            const byState = byCountry.find(x => (x.admin1 || '').toLowerCase() === String(opts.preferState).toLowerCase());
-            if (byState) r = byState;
-          }
-        }
-      }
+      const r = results[0];
       PCH.lat = r.latitude; PCH.lon = r.longitude; PCH.name = r.name; PCH.state = r.admin1 || '';
       PCH.tzOffsetMin = null; // resolved by pchRunCalculation's own sun-times fetch, below
       pchSetStatus('स्थान मिल गया: ' + r.name + (r.admin1 ? ', ' + r.admin1 : '') + (r.country ? ', ' + r.country : ''));
+      pchBusy.show('sun', r.name + ' के लिए पंचांग तैयार हो रहा है');
       pchRunCalculation();
     } catch (e) {
+      pchBusy.hide(true);
       pchSetStatus('स्थान खोजने में त्रुटि हुई। कृपया इंटरनेट कनेक्शन जाँचें।', true);
     }
   }
@@ -1328,7 +1199,6 @@
   }
 
   function pad2(n){ return String(n).padStart(2,'0'); }
-  function ymd(date) { return date.getFullYear() + '-' + pad2(date.getMonth()+1) + '-' + pad2(date.getDate()); }
   // Calendar date at a given UTC offset (minutes east of UTC), read via the
   // same "shift the instant, then read UTC getters" trick used everywhere
   // else in this module. ymd() above reads the *browser's* local date,
@@ -1352,7 +1222,7 @@
      then matched against a curated festival table (North-Indian /
      Purnimant convention). Solar (Sankranti) festivals are detected
      separately via the Sun's sidereal Rashi. ── */
-  const MONTH_NAMES_HI_VRAT = ['जनवरी','फरवरी','मार्च','अप्रैल','मई','जून','जुलाई','अगस्त','सितम्बर','अक्टूबर','नवम्बर','दिसम्बर'];
+  const MONTH_NAMES_HI = ['जनवरी','फरवरी','मार्च','अप्रैल','मई','जून','जुलाई','अगस्त','सितम्बर','अक्टूबर','नवम्बर','दिसम्बर'];
 
   const VRAT_TYOHAR_MAP = {
     'चैत्र|शुक्ल|1': 'चैत्र नवरात्रि प्रारंभ / गुड़ी पड़वा (नव संवत्सर)',
@@ -1420,7 +1290,7 @@
   function pchPanchangSnapshotAt(jd) {
     const { sun, moon } = sunMoonLongitudes(jd);
     const tithi = getTithi(sun, moon);
-    const masa = getPurnimantMasa(sun, jd, tithi.index);
+    const masa = getPurnimantMasa(jd, tithi.index);
     const pakshaShort = tithi.paksha.replace(' पक्ष', '');
     const tithiNum = (tithi.index % 15) + 1; // 1-15 within the paksha
     return { sun, moon, tithi, masa, pakshaShort, tithiNum };
@@ -1464,10 +1334,13 @@
   }
   // Exact JD at which the Sun enters sidereal मकर or कर्क in the given
   // Gregorian year (null if not found).
-  function pchFindSankrantiJD(year, rashi) {
-    let cur = julianDay(new Date(Date.UTC(year, rashi === 'मकर' ? 0 : 5, rashi === 'मकर' ? 1 : 25)));
+  // Every instant in [fromJD, toJD) at which the Sun enters sidereal `rashi`
+  // (1-day scan, then 40-round bisection of each crossing).
+  function pchSankrantiCrossings(rashi, fromJD, toJD) {
+    const found = [];
+    let cur = fromJD;
     let prevR = getSuryaRashi(sunLongitude(cur), cur);
-    for (let i = 0; i < 45; i++) {
+    while (cur < toJD) {
       const next = cur + 1;
       const curR = getSuryaRashi(sunLongitude(next), next);
       if (curR === rashi && prevR !== rashi) {
@@ -1476,11 +1349,16 @@
           const mid = (lo + hi) / 2;
           if (getSuryaRashi(sunLongitude(mid), mid) === rashi) hi = mid; else lo = mid;
         }
-        return hi;
+        found.push(hi);
       }
       prevR = curR; cur = next;
     }
-    return null;
+    return found;
+  }
+  function pchFindSankrantiJD(year, rashi) {
+    const from = julianDay(new Date(Date.UTC(year, rashi === 'मकर' ? 0 : 5, rashi === 'मकर' ? 1 : 25)));
+    const found = pchSankrantiCrossings(rashi, from, from + 45);
+    return found.length ? found[0] : null;
   }
   // Panchang observance day for a Sankranti instant (jd), as a local {y,m,d}:
   //  • मकर: Punya Kaal runs FORWARD from the moment, so if the Sun enters
@@ -1541,32 +1419,19 @@
     const jdRangeEnd = jdRangeStart + daysAhead + 2;
     [{ rashi: 'मकर', label: 'मकर संक्रांति (पोंगल, उत्तरायण प्रारंभ)' }, { rashi: 'कर्क', label: 'कर्क संक्रांति' }].forEach(function (entry) {
       const seenYears = {};
-      let cur = jdRangeStart;
-      let prevR = getSuryaRashi(sunLongitude(cur), cur);
-      while (cur < jdRangeEnd) {
-        const next = cur + 1;
-        const curR = getSuryaRashi(sunLongitude(next), next);
-        if (curR === entry.rashi && prevR !== entry.rashi) {
-          let lo = cur, hi = next;
-          for (let b = 0; b < 40; b++) {
-            const mid = (lo + hi) / 2;
-            if (getSuryaRashi(sunLongitude(mid), mid) === entry.rashi) hi = mid; else lo = mid;
-          }
-          const crossLocal = new Date(toDate(hi).getTime() + tz * 60000);
-          const yr = crossLocal.getUTCFullYear();
-          if (seenYears[yr] === undefined) {
-            seenYears[yr] = true;
-            const obs = pchSankrantiObservedDay(hi, entry.rashi, tz); // sunrise/sunset rule, see helper
-            const dateOnly = new Date(Date.UTC(obs.y, obs.m, obs.d, 6, 0, 0) - tz * 60000);
-            const dateKey = dateOnly.getUTCFullYear() + '-' + dateOnly.getUTCMonth() + '-' + dateOnly.getUTCDate();
-            const snapAtDate = pchPanchangSnapshotAt(julianDay(dateOnly));
-            byDate[dateKey] = byDate[dateKey] || { dateObj: dateOnly, labels: [], masa: snapAtDate.masa, paksha: snapAtDate.pakshaShort };
-            byDate[dateKey].labels.push(entry.label);
-          }
+      pchSankrantiCrossings(entry.rashi, jdRangeStart, jdRangeEnd).forEach(function (hi) {
+        const crossLocal = new Date(toDate(hi).getTime() + tz * 60000);
+        const yr = crossLocal.getUTCFullYear();
+        if (seenYears[yr] === undefined) {
+          seenYears[yr] = true;
+          const obs = pchSankrantiObservedDay(hi, entry.rashi, tz); // sunrise/sunset rule, see helper
+          const dateOnly = new Date(Date.UTC(obs.y, obs.m, obs.d, 6, 0, 0) - tz * 60000);
+          const dateKey = dateOnly.getUTCFullYear() + '-' + dateOnly.getUTCMonth() + '-' + dateOnly.getUTCDate();
+          const snapAtDate = pchPanchangSnapshotAt(julianDay(dateOnly));
+          byDate[dateKey] = byDate[dateKey] || { dateObj: dateOnly, labels: [], masa: snapAtDate.masa, paksha: snapAtDate.pakshaShort };
+          byDate[dateKey].labels.push(entry.label);
         }
-        prevR = curR;
-        cur = next;
-      }
+      });
     });
 
     const events = Object.keys(byDate).map(function (k) {
@@ -1580,7 +1445,7 @@
   function pchVratItemHTML(ev) {
     const d = ev.dateObj;
     const dayNum = d.getUTCDate();
-    const monthShort = MONTH_NAMES_HI_VRAT[d.getUTCMonth()].slice(0, 3);
+    const monthShort = MONTH_NAMES_HI[d.getUTCMonth()].slice(0, 3);
     const weekday = WEEKDAY_NAMES[d.getUTCDay()];
     return '<div class="vrat-item">'
       + '<div class="vrat-date-badge"><span class="vrat-date-num">' + dayNum + '</span><span class="vrat-date-mon">' + monthShort + '</span></div>'
@@ -1589,8 +1454,11 @@
       + '</div>';
   }
 
-  // Vrat/Tyohar list runs up to this date (inclusive). Once the current date
-  // passes it, the list falls back to the end of the current year.
+  // Vrat/Tyohar and holiday lists run up to this date (inclusive); after it they
+  // fall back to the end of the current year. It tracks how far the hand-entered
+  // HOL_* tables further down (India Post, Islamic, state festivals) reach —
+  // add the next year's rows to those tables BEFORE moving this date, or the
+  // later part of the list will silently be missing those holidays.
   const PCH_VRAT_END_UTC = Date.UTC(2027, 2, 31); // 31 March 2027
   function pchVratDaysAhead(localNow) {
     const todayUtc = Date.UTC(localNow.getUTCFullYear(), localNow.getUTCMonth(), localNow.getUTCDate());
@@ -1599,6 +1467,7 @@
   }
 
   let PCH_VRAT_EVENTS = [];
+  let pchVratRenderedKey = null;   // see the cache check in pchRunCalculation
 
   window.pchRenderVratTyohar = function pchRenderVratTyohar() {
     const tz = (PCH && PCH.tzOffsetMin) || 330;
@@ -1617,7 +1486,7 @@
   function pchRenderVratTyoharFull() {
     const listEl = document.getElementById('vrat-full-list');
     if (!listEl) return;
-    // Re-derive full remainder-of-year list (not just the 5 shown on Panchang)
+    // Re-derive full remainder-of-year list (not just the 3 shown on Panchang)
     const tz = (PCH && PCH.tzOffsetMin) || 330;
     const nowBase = (PCH && PCH.customDateTime) ? PCH.customDateTime.getTime() : Date.now();
     const localNow = new Date(nowBase + tz * 60000);
@@ -1625,7 +1494,7 @@
     let html = '';
     let curMonthLabel = null;
     events.forEach(ev => {
-      const monthLabel = MONTH_NAMES_HI_VRAT[ev.dateObj.getUTCMonth()] + ' ' + ev.dateObj.getUTCFullYear();
+      const monthLabel = MONTH_NAMES_HI[ev.dateObj.getUTCMonth()] + ' ' + ev.dateObj.getUTCFullYear();
       if (monthLabel !== curMonthLabel) {
         curMonthLabel = monthLabel;
         html += '<div class="vrat-month-heading">' + monthLabel + '</div>';
@@ -1633,10 +1502,6 @@
       html += pchVratItemHTML(ev);
     });
     listEl.innerHTML = html || '<div style="padding:10px 2px; color:var(--ink-soft); font-size:13px;">इस वर्ष हेतु कोई शेष व्रत-त्योहार नहीं मिला।</div>';
-    const subEl = document.getElementById('vrat-full-sub');
-    if (subEl) subEl.textContent = (Date.UTC(localNow.getUTCFullYear(), localNow.getUTCMonth(), localNow.getUTCDate()) <= PCH_VRAT_END_UTC)
-      ? 'वर्तमान तिथि से 31 मार्च 2027 तक की एकादशी (गयारस), पूर्णिमा, अमावस्या व प्रमुख त्योहार सूची'
-      : 'वर्तमान तिथि से ' + localNow.getUTCFullYear() + ' के अंत तक की एकादशी (गयारस), पूर्णिमा, अमावस्या व प्रमुख त्योहार सूची';
   }
 
   const HOL_STATE_CODE_MAP = {
@@ -1680,14 +1545,10 @@
   // any computed/approximate date, for the 'post' category.
   const HOL_INDIAPOST_2026 = [
     { y: 2026, m: 1,  d: 26, name: 'गणतंत्र दिवस' },
-    { y: 2026, m: 3,  d: 21, name: 'ईद-उल-फितर' },
     { y: 2026, m: 3,  d: 31, name: 'महावीर जयंती' },
     { y: 2026, m: 4,  d: 3,  name: 'गुड फ्राइडे' },
     { y: 2026, m: 5,  d: 1,  name: 'बुद्ध पूर्णिमा' },
-    { y: 2026, m: 5,  d: 27, name: 'ईद-उल-जुहा (बकरीद)' },
-    { y: 2026, m: 6,  d: 26, name: 'मुहर्रम' },
     { y: 2026, m: 8,  d: 15, name: 'स्वतंत्रता दिवस' },
-    { y: 2026, m: 8,  d: 26, name: 'ईद-ए-मिलाद (पैगंबर मोहम्मद जन्मदिवस)' },
     { y: 2026, m: 10, d: 2,  name: 'गांधी जयंती' },
     { y: 2026, m: 10, d: 20, name: 'दशहरा (विजयादशमी)' },
     { y: 2026, m: 11, d: 8,  name: 'दीपावली' },
@@ -1714,7 +1575,6 @@
   // Eid-ul-Fitr depends on moon sighting and may shift by a day.
   const HOL_INDIAPOST_2027 = [
     { y: 2027, m: 1,  d: 26, name: 'गणतंत्र दिवस' },
-    { y: 2027, m: 3,  d: 10, name: 'ईद-उल-फितर' },
     { y: 2027, m: 3,  d: 26, name: 'गुड फ्राइडे' }
   ];
   const HOL_ISLAMIC_2027 = [
@@ -1879,7 +1739,7 @@
   function pchHolidayItemHTML(ev) {
     const dObj = ev.dateObj;
     const dayNum = dObj.getUTCDate();
-    const monthShort = MONTH_NAMES_HI_VRAT[dObj.getUTCMonth()].slice(0, 3);
+    const monthShort = MONTH_NAMES_HI[dObj.getUTCMonth()].slice(0, 3);
     return '<div class="hol-item">'
       + '<div class="hol-date-badge"><span class="vrat-date-num">' + dayNum + '</span><span class="vrat-date-mon">' + monthShort + '</span></div>'
       + '<div class="hol-info"><div class="hol-name">' + ev.name + '</div><div class="hol-chips">' + pchHolidayChipsHTML(ev.cats) + '</div></div>'
@@ -1897,11 +1757,6 @@
     PCH_HOLIDAY_EVENTS = pchBuildPublicHolidays(daysAhead);
     const listEl = document.getElementById('pch-holiday-list');
     if (!listEl) return;
-    const placeEl = document.getElementById('hol-note-place');
-    if (placeEl) {
-      const code = pchStateCode(PCH.state);
-      placeEl.textContent = PCH.name ? (PCH.name + (code ? ' (' + code + ')' : (PCH.state ? ', ' + PCH.state : ''))) : 'चयनित स्थान';
-    }
     const upcoming = PCH_HOLIDAY_EVENTS.slice(0, 3);
     listEl.innerHTML = upcoming.length
       ? upcoming.map(pchHolidayItemHTML).join('')
@@ -1929,14 +1784,12 @@
     let html = '';
     let curMonthLabel = null;
     filtered.forEach(ev => {
-      const monthLabel = MONTH_NAMES_HI_VRAT[ev.dateObj.getUTCMonth()] + ' ' + ev.dateObj.getUTCFullYear();
+      const monthLabel = MONTH_NAMES_HI[ev.dateObj.getUTCMonth()] + ' ' + ev.dateObj.getUTCFullYear();
       if (monthLabel !== curMonthLabel) { curMonthLabel = monthLabel; html += '<div class="vrat-month-heading">' + monthLabel + '</div>'; }
       html += pchHolidayItemHTML(ev);
     });
     if (listEl) listEl.innerHTML = html || '<div style="padding:10px 2px; color:var(--ink-soft); font-size:13px;">इस श्रेणी में कोई शेष अवकाश नहीं मिला।</div>';
 
-    const subEl = document.getElementById('hol-full-sub');
-    if (subEl) subEl.textContent = (PCH.name ? PCH.name + (PCH.state ? ', ' + PCH.state : '') + ' हेतु — ' : '') + 'वर्तमान तिथि से ' + (Date.UTC(localNow.getUTCFullYear(), localNow.getUTCMonth(), localNow.getUTCDate()) <= PCH_VRAT_END_UTC ? '31 मार्च 2027' : localNow.getUTCFullYear() + ' के अंत') + ' तक की अवकाश सूची';
   }
 
   window.pchSetHolFilter = function pchSetHolFilter(id) {
@@ -1953,11 +1806,22 @@
   let pchCalcGeneration = 0;
 
   window.pchRunCalculation = async function pchRunCalculation() {
+    // Overlay only follows calls that a user-initiated flow already opened it for;
+    // silent background refreshes leave it untouched.
+    const ours = pchBusy.isActive();
+    const p = pchRunCalculationInner();
+    const gen = pchCalcGeneration;
+    try { await p; } finally {
+      if (ours && gen === pchCalcGeneration) pchBusy.hide();
+    }
+  };
+
+  async function pchRunCalculationInner() {
     const myGen = ++pchCalcGeneration; // guards against a slower, older call
                                         // overwriting a newer one's results
     document.getElementById('pch-content').style.display = 'block';
     const today = PCH.customDateTime ? new Date(PCH.customDateTime) : new Date();
-    pchShowLocationBar(today);
+    pchShowLocationBar();
     try {
       let sunToday, sunTomorrow, sunYesterday;
       try {
@@ -1976,6 +1840,7 @@
         return;
       }
       if (myGen !== pchCalcGeneration) return; // a newer call has since started — abandon this one
+      pchBusy.set('calc');
       if (!sunToday.sunrise || !sunToday.sunset) {
         pchSetStatus('इस स्थान के लिए सूर्योदय/सूर्यास्त डेटा उपलब्ध नहीं है।', true);
         return;
@@ -2005,9 +1870,6 @@
 
       if (myGen !== pchCalcGeneration) return; // abandon stale result just before painting
 
-      const pchDateSubEl = document.getElementById('pch-date-sub');
-      if (pchDateSubEl) pchDateSubEl.textContent = today.toLocaleDateString('hi-IN', { day:'numeric', month:'long', year:'numeric' }) + ' · ' + (PCH.name || '') + ' · ' + (PCH.customDateTime ? 'चयनित समय ' : 'अभी ') + fmtTime(today, tz) + ' के अनुसार';
-
       const elementsLiveLabelEl = document.getElementById('pch-elements-live-label');
       if (elementsLiveLabelEl) {
         elementsLiveLabelEl.textContent = PCH.customDateTime
@@ -2015,7 +1877,6 @@
           : '(अभी के समय अनुसार — स्वतः अपडेट होता है)';
       }
 
-      const MONTH_NAMES_HI = ['जनवरी','फरवरी','मार्च','अप्रैल','मई','जून','जुलाई','अगस्त','सितम्बर','अक्टूबर','नवम्बर','दिसम्बर'];
       const localNow = new Date(today.getTime() + tz*60000);
       // Formats a JD as "<time> तक" when it falls on today, "<time> कल तक"
       // when it falls on tomorrow (so it's clear the transition rolls into
@@ -2046,8 +1907,6 @@
         }
         return withParens ? ' <span style="font-weight:400 !important;">(' + inner + ')</span>' : ' ' + inner;
       }
-      // Backwards-compatible alias (used by masa/paksha, parenthesized form).
-      function fmtUntil(jdEnd) { return fmtTak(jdEnd, true); }
 
       // Each section below is independently guarded: an edge-case failure
       // in any single calculation (a particular date/location tripping up
@@ -2070,7 +1929,7 @@
         }
       }
 
-      pchSafeSection('tatva-samvat-ritu-masa', 'pch-content', function () {
+      pchSafeSection('tatva-samvat-ritu-masa', null, function () {
         let samvatYear;
         try { samvatYear = vikramSamvatAt(jdNow); } catch (e) { samvatYear = vikramSamvat(today); }   // never let this block the rest of the section
         document.getElementById('pch-tatva-samvat').textContent = 'वर्ष ' + samvatYear;
@@ -2083,7 +1942,7 @@
         document.getElementById('pch-ayan').innerHTML = getAyan(jdNow) +
           (ayanEndLocal ? ' <span style="font-weight:400 !important;">(' + ayanEndLocal.getUTCDate() + ' ' + MONTH_NAMES_HI[ayanEndLocal.getUTCMonth()] + ' तक)</span>' : '');
         const masaEndJD = findNextTransitionSlow(jdNow, purnimantMasaIndexAt, 20);
-        document.getElementById('pch-purnimant-masa').innerHTML = getPurnimantMasa(sun, jdNow, tithi.index) + fmtUntil(masaEndJD);
+        document.getElementById('pch-purnimant-masa').innerHTML = getPurnimantMasa(jdNow, tithi.index) + fmtTak(masaEndJD, true);
         document.getElementById('pch-paksha').textContent = tithi.paksha;
         document.getElementById('pch-disha-shool').textContent = getDishaShool(weekdayIdx);
       });
@@ -2154,19 +2013,22 @@
         pchRenderChoghadiyaFull();
       });
 
+      // Both lists depend only on the local calendar date, the time zone, the
+      // location (Sankranti observance day) and the state (holiday gating) —
+      // never on the time of day — so they are rebuilt only when one of those
+      // changes, not on every minute tick.
       if (myGen === pchCalcGeneration) {
-        pchSafeSection('vrat-holidays', 'pch-vrat-list', function () {
-          pchRenderVratTyohar();
-          pchRenderHolidays();
-        });
+        const vratKey = [tz, PCH.lat, PCH.lon, PCH.state, ymdAtOffset(today, tz)].join('|');
+        if (vratKey !== pchVratRenderedKey) {
+          pchSafeSection('vrat-holidays', 'pch-vrat-list', function () {
+            pchRenderVratTyohar();
+            pchRenderHolidays();
+            pchVratRenderedKey = vratKey;   // only after a successful render, so a failure retries next tick
+          });
+        }
       }
 
-      // Every trigger that leads here — first open, the every-minute live
-      // refresh, and regaining tab/app focus after being idle — is exactly
-      // where the backdrop-filter repaint bug described above can strike,
-      // so nudge a repaint unconditionally once rendering is done.
       if (myGen === pchCalcGeneration) {
-        pchForceRepaint();
         // first successful render: let the product tour decide whether to greet this user
         try {
           if (typeof window.spTourMaybeStart === 'function') window.spTourMaybeStart();
@@ -2183,7 +2045,7 @@
         pchSetStatus('गणना में त्रुटि हुई। कृपया पुनः प्रयास करें। (' + (err && err.message ? err.message : 'unknown error') + ')', true);
       }
     }
-  };
+  }
 
 
   /* ══════════════════════════════════════════════════════════════════
@@ -2213,16 +2075,8 @@
   let eldScrollY = 0;                   // main-page scroll position to restore on back
   let eldBirth = null;                  // { rashiIdx, nakshatraIdx } for चंद्रबल / ताराबल
 
-  // Inverse of getKarana(): karana-index (0–59) → name.
-  function eldKaranaName(idx) {
-    if (idx === 0) return KARANA_NAMES[0];
-    if (idx === 57) return KARANA_NAMES[8];
-    if (idx === 58) return KARANA_NAMES[9];
-    if (idx === 59) return KARANA_NAMES[10];
-    return KARANA_NAMES[1 + ((idx - 1) % 7)];
-  }
-  function eldBalamHouse(rashiIdx) { return ((rashiIdx - eldBirth.rashiIdx + 12) % 12) + 1; }
-  function eldTaraIdx(nakIdx) { return ((((nakIdx - eldBirth.nakshatraIdx + 27) % 27) + 1) - 1) % 9; }
+  function eldBalamHouse(rashiIdx) { return balamHouse(rashiIdx, eldBirth.rashiIdx); }
+  function eldTaraIdx(nakIdx) { return taraIndex(nakIdx, eldBirth.nakshatraIdx); }
 
   // step / maxDays = scan resolution and search window (days) for that element.
   // A step must stay well below the element's SHORTEST possible duration, or a whole
@@ -2251,7 +2105,7 @@
     karana: {
       label: 'करण', idxFn: karanaIndexAt, step: 0.25, maxDays: 2,
       desc: 'तिथि का आधा भाग (6° का अंतर) एक करण होता है — एक चक्र में 60 करण-खंड',
-      name: i => eldKaranaName(i),
+      name: karanaName,
       sub: i => isVishtiKaranaIdx(i) ? 'भद्रा काल — अशुभ' : 'करण-खंड ' + (i + 1) + ' / 60',
       tone: i => isVishtiKaranaIdx(i) ? 'bad' : ''
     },
@@ -2301,10 +2155,10 @@
     chandrabal: {
       label: 'चंद्रबल', needsBirth: true, idxFn: chandraRashiIndexAt, step: 0.5, maxDays: 5,
       desc: 'आपकी जन्म राशि से गिना गया चंद्रमा का भाव — चंद्र राशि बदलते ही चंद्रबल भी बदलता है',
-      name: i => CHANDRABALAM_GOOD_HOUSES.indexOf(eldBalamHouse(i)) !== -1 ? 'शुभ' : 'अशुभ',
+      name: i => isGoodHouse(eldBalamHouse(i)) ? 'शुभ' : 'अशुभ',
       cap: i => RASHI_NAMES[i] + ' राशि',
       sub: i => 'चंद्र राशि ' + RASHI_NAMES[i] + ' · ' + eldBalamHouse(i) + ELD_HOUSE_SUFFIX,
-      tone: i => CHANDRABALAM_GOOD_HOUSES.indexOf(eldBalamHouse(i)) !== -1 ? 'good' : 'bad'
+      tone: i => isGoodHouse(eldBalamHouse(i)) ? 'good' : 'bad'
     },
     tarabal: {
       label: 'ताराबल', needsBirth: true, idxFn: nakshatraIndexAt, step: 0.5, maxDays: 3,
@@ -2376,7 +2230,7 @@
   function eldLocal(date) { return new Date(date.getTime() + (PCH.tzOffsetMin || 330) * 60000); }
   function eldDateLine(date, nowDate) {
     const l = eldLocal(date), n = eldLocal(nowDate);
-    let s = l.getUTCDate() + ' ' + MONTH_NAMES_HI_VRAT[l.getUTCMonth()];
+    let s = l.getUTCDate() + ' ' + MONTH_NAMES_HI[l.getUTCMonth()];
     if (l.getUTCFullYear() !== n.getUTCFullYear()) s += ' ' + l.getUTCFullYear();
     s += ', ' + WEEKDAY_NAMES[l.getUTCDay()];
     const sameDay = l.getUTCFullYear() === n.getUTCFullYear() && l.getUTCMonth() === n.getUTCMonth() && l.getUTCDate() === n.getUTCDate();
@@ -2540,7 +2394,7 @@
       const birth = pchGetBirthDetails();
       let idx = null;
       try { idx = birth ? pchBirthIndices(birth.birthDate, birth.birthTime) : null; } catch (e) { idx = null; }
-      if (!idx) { window.pchOpenBirthModal(); return; }   // missing OR unusable → same prompt the main page uses
+      if (!idx) { window.openProfileModal(); return; }   // missing OR unusable → ask in the profile popup
       eldBirth = idx;
     }
     eldKey = key;
@@ -2690,16 +2544,18 @@ function showSecondaryPage(pageId) {
   };
 
   window.openProfileModal = function openProfileModal() {
-    var profile = (typeof window.pchGetProfile === 'function') ? window.pchGetProfile() : { fullName: '', photo: '', birthDate: '', birthTime: '12:00' };
+    var profile = window.pchGetProfile();
     _profilePendingPhoto = profile.photo || null;
 
-    var nameEl = document.getElementById('profile-fullname');
+    var firstEl = document.getElementById('profile-firstname');
+    var lastEl = document.getElementById('profile-lastname');
     var dateEl = document.getElementById('profile-birth-date');
     var timeEl = document.getElementById('profile-birth-time');
     var unknownEl = document.getElementById('profile-birth-time-unknown');
     var errEl = document.getElementById('profile-modal-error');
 
-    if (nameEl) nameEl.value = profile.fullName || '';
+    if (firstEl) firstEl.value = profile.firstName || '';
+    if (lastEl) lastEl.value = profile.lastName || '';
     if (dateEl) dateEl.value = profileIsoToDmy(profile.birthDate || '');
     if (timeEl) {
       timeEl.value = profile.birthTime || '';
@@ -2728,13 +2584,15 @@ function showSecondaryPage(pageId) {
   };
 
   window.saveProfileModal = function saveProfileModal() {
-    var nameEl = document.getElementById('profile-fullname');
+    var firstEl = document.getElementById('profile-firstname');
+    var lastEl = document.getElementById('profile-lastname');
     var dateEl = document.getElementById('profile-birth-date');
     var timeEl = document.getElementById('profile-birth-time');
     var unknownEl = document.getElementById('profile-birth-time-unknown');
     var errEl = document.getElementById('profile-modal-error');
 
-    var fullName = nameEl ? nameEl.value.trim() : '';
+    var firstName = firstEl ? firstEl.value.trim() : '';
+    var lastName = lastEl ? lastEl.value.trim() : '';
     var rawDate = dateEl ? dateEl.value.trim() : '';
     var birthDate = '';
     if (rawDate) {
@@ -2744,23 +2602,20 @@ function showSecondaryPage(pageId) {
         return;
       }
     }
-    var birthTime = (unknownEl && unknownEl.checked) ? '12:00' : ((timeEl && timeEl.value) ? timeEl.value : '12:00');
+    var birthTime = (unknownEl && unknownEl.checked) ? '07:00' : ((timeEl && timeEl.value) ? timeEl.value : '12:00');
 
-    if (typeof window.pchSaveProfile === 'function') {
-      window.pchSaveProfile({
-        fullName: fullName,
-        photo: _profilePendingPhoto == null ? undefined : _profilePendingPhoto,
-        birthDate: birthDate,
-        birthTime: birthTime
-      });
-    }
+    window.pchSaveProfile({
+      firstName: firstName,
+      lastName: lastName,
+      photo: _profilePendingPhoto == null ? undefined : _profilePendingPhoto,
+      birthDate: birthDate,
+      birthTime: birthTime
+    });
 
     applyAvatarToHeader(_profilePendingPhoto || null);
 
-    // Refresh चंद्रबल / ताराबल if calculation is available
-    if (typeof window.pchRunCalculation === 'function' && typeof PCH !== 'undefined' && PCH && PCH.lat !== null) {
-      try { window.pchRunCalculation(); } catch (e) { /* ignore */ }
-    }
+    // Refresh चंद्रबल / ताराबल now that the birth details may have changed
+    window.pchRecalcIfReady();
 
     if (errEl) errEl.style.display = 'none';
     window.closeProfileModal();
@@ -2912,22 +2767,45 @@ function showSecondaryPage(pageId) {
   }
 
   function loadProfileOnBoot() {
-    if (typeof window.pchGetProfile !== 'function') return;
     var profile = window.pchGetProfile();
     if (profile && profile.photo) applyAvatarToHeader(profile.photo);
   }
 
   // Boot panchang on load
   document.addEventListener('DOMContentLoaded', function() {
-    if (typeof showPanchang === 'function') showPanchang();
+    renderFooters();
+    showPanchang();
     initCropInteractions();
     loadProfileOnBoot();
   });
 
 
-/* ── Settings menu, settings pages and dark mode (ported from SP14) ── */
+/* ── Settings menu, settings pages and dark mode ── */
 var SP_CONTACT_EMAIL = 'trovatoindia@protonmail.com';
 var SP_SETTINGS_KEY = 'sp_app_settings';
+
+/* ── Page footers: one definition for the ten .about-footer blocks in index.html ──
+   data-footer="plain"           developer line only
+   data-footer="about"           developer line + office addresses (About Us page)
+   data-footer="disclaimer"      developer line + disclaimer
+   data-footer="disclaimer-pch"  same, tagged .pch-disclaimer (hidden by CSS while the location picker is open) */
+var SP_FOOTER_DEV = '<p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-by">Developed by</span><br><strong class="dev-company">Trovato Communications Private Limited</strong><br><span class="dev-email-line">Email: <a href="mailto:' + SP_CONTACT_EMAIL + '" style="color:var(--saffron); text-decoration:none;">' + SP_CONTACT_EMAIL + '</a></span></p>';
+var SP_FOOTER_DISCLAIMER = "Disclaimer: इस एप्लिकेशन में दिया गया पंचांग मात्र अनुमान है, जिसकी सटीकता आपकी वर्तमान GPS location और वर्तमान समय पर निर्भर करती है। किसी भी महत्वपूर्ण उपयोग से पहले कृपया किसी प्रामाणिक पंडित/ज्योतिषी से परामर्श अवश्य करें। व्रत त्योहार एवं सार्वजनिक अवकाश सूची सामान्यतः सटीक हैं, एवं विभिन्न पोर्टल से संकलित की गई है, इसलिए कृपया किसी प्रकार की निर्भरता या उपयोग से पूर्व आधिकारिक व अद्यतन सूचना से पुष्टि अवश्य करें।";
+function renderFooters() {
+  var nodes = document.querySelectorAll('.about-footer[data-footer]');
+  for (var i = 0; i < nodes.length; i++) {
+    var kind = nodes[i].getAttribute('data-footer');
+    var html = SP_FOOTER_DEV;
+    if (kind === 'about') {
+      // About Us only: registered / additional office lines, same size & font as the email line
+      html = html.replace('</p>', '<br><span class="dev-email-line">Reg. Office: Beawar 305901 (Raj.)</span><br><span class="dev-email-line">Additional Operations: Jaipur 302004 (Raj.)</span></p>');
+    }
+    if (kind !== 'plain' && kind !== 'about') {
+      html += '<p' + (kind === 'disclaimer-pch' ? ' class="pch-disclaimer"' : '') + ' style="font-size:11px; opacity:0.75; line-height:1.5; text-align:justify;">' + SP_FOOTER_DISCLAIMER + '</p>';
+    }
+    nodes[i].innerHTML = html;
+  }
+}
 
 function toggleSettings() { document.getElementById('settings-menu').classList.toggle('open'); }
 function closeSettings() { document.getElementById('settings-menu').classList.remove('open'); }
