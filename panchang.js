@@ -1182,6 +1182,9 @@
       + '&daily=sunrise,sunset&timezone=auto&start_date=' + dateStr + '&end_date=' + dateStr;
     const res = await fetch(url, { cache: 'no-store' });
     const data = await res.json();
+    // Out-of-range dates / API errors come back without `daily` — throw so the
+    // failure is NOT cached as an empty result (callers may fall back).
+    if (!data || !data.daily || !data.daily.sunrise) throw new Error('sun data unavailable');
     // Open-Meteo returns utc_offset_seconds for the queried location, and
     // sunrise/sunset as timezone-less local ISO strings (e.g. "2026-07-11T06:10").
     // We must resolve the offset FIRST, then convert those local strings into
@@ -1196,6 +1199,34 @@
     };
     _sunTimesCache.set(cacheKey, result);
     return result;
+  }
+
+  // Offline sunrise/sunset for a "YYYY-MM-DD" date at the current location.
+  function pchApproxSunTimes(dateStr) {
+    const p = dateStr.split('-').map(Number), tz = PCH.tzOffsetMin || 330;
+    const r = pchApproxSunriseSetMin(p[0], p[1] - 1, p[2], tz);
+    const base = Date.UTC(p[0], p[1] - 1, p[2]);
+    return { sunrise: new Date(base + (r.rise - tz) * 60000), sunset: new Date(base + (r.set - tz) * 60000), approx: true };
+  }
+  // Open-Meteo first; if it can't answer (offline, or a date beyond its
+  // forecast window) use the offline approximation, flagged `approx: true`.
+  // A failed date is not re-requested for 10 minutes so the per-minute
+  // refresh doesn't hammer the API.
+  const _sunFailAt = new Map();
+  async function pchSunTimesWithFallback(dateStr) {
+    const key = PCH.lat + ',' + PCH.lon + ',' + dateStr;
+    if (!_sunTimesCache.has(key)) {
+      const f = _sunFailAt.get(key);
+      if (f && Date.now() - f < 600000) return pchApproxSunTimes(dateStr);
+    }
+    try {
+      const r = await pchFetchSunTimes(dateStr);
+      if (r && r.sunrise && r.sunset) return r;
+      throw new Error('empty');
+    } catch (e) {
+      _sunFailAt.set(key, Date.now());
+      return pchApproxSunTimes(dateStr);
+    }
   }
 
   function pad2(n){ return String(n).padStart(2,'0'); }
@@ -1378,11 +1409,11 @@
     return { y: dt.getUTCFullYear(), m: dt.getUTCMonth(), d: dt.getUTCDate() };
   }
 
-  function pchBuildVratTyoharList(daysAhead) {
+  function pchBuildVratTyoharList(daysAhead, startYMD) { // startYMD (optional): local {y,m,d} to start from instead of today
     const tz = (PCH && PCH.tzOffsetMin) || 330;
     const now = (PCH && PCH.customDateTime) || new Date();
     const localNow = new Date(now.getTime() + tz * 60000);
-    const y = localNow.getUTCFullYear(), m = localNow.getUTCMonth(), baseDay = localNow.getUTCDate();
+    const y = startYMD ? startYMD.y : localNow.getUTCFullYear(), m = startYMD ? startYMD.m : localNow.getUTCMonth(), baseDay = startYMD ? startYMD.d : localNow.getUTCDate();
 
     // Keyed by local "y-m-d" so a Sankranti and a Tithi-based Vrat/Tyohar
     // that land on the same calendar day get merged into one entry
@@ -1674,11 +1705,11 @@
     return !!code && rule.states.indexOf(code) !== -1;
   }
 
-  function pchBuildPublicHolidays(daysAhead) {
+  function pchBuildPublicHolidays(daysAhead, startYMD, vratEvents) { // optional: local {y,m,d} start + the vrat events to derive lunar holidays from
     const tz = (PCH && PCH.tzOffsetMin) || 330;
     const nowBase = (PCH && PCH.customDateTime) ? PCH.customDateTime.getTime() : Date.now();
     const localNow = new Date(nowBase + tz * 60000);
-    const y = localNow.getUTCFullYear(), m = localNow.getUTCMonth(), d = localNow.getUTCDate();
+    const y = startYMD ? startYMD.y : localNow.getUTCFullYear(), m = startYMD ? startYMD.m : localNow.getUTCMonth(), d = startYMD ? startYMD.d : localNow.getUTCDate();
     const todayUTC = Date.UTC(y, m, d);
     const cutoffUTC = todayUTC + daysAhead * 86400000;
     const merged = {}; // key: 'YYYY-MM-DD|name' -> { dateObj, name, cats:Set }
@@ -1720,7 +1751,7 @@
     HOL_STATE_LUNAR_2026.forEach(h => { if (pchStateAllowed(h)) addEvent(Date.UTC(h.y, h.m - 1, h.d), h.name, h.cats); });
 
     // Lunar holidays derived from the already-computed Vrat/Tyohar scan
-    (PCH_VRAT_EVENTS || []).forEach(ev => {
+    (vratEvents || PCH_VRAT_EVENTS || []).forEach(ev => {
       for (let i = 0; i < HOL_LUNAR_RULES.length; i++) {
         const rule = HOL_LUNAR_RULES[i];
         if (rule.test(ev) && pchStateAllowed(rule)) { addEvent(Date.UTC(ev.dateObj.getUTCFullYear(), ev.dateObj.getUTCMonth(), ev.dateObj.getUTCDate()), rule.name, rule.cats); break; }
@@ -1803,6 +1834,332 @@
     showSecondaryPage('page-holidays');
   };
 
+  /* ══════════════════════════════════════════════════════════════════
+     PANCHANG CALENDAR MODULE (Phase 1)
+     Month grid shown at the very top of the Panchang page. Selectable
+     range: first day of the current month … PCH_VRAT_END_UTC (the same
+     boundary the Vrat/Holiday data uses; falls back to 31 Dec after it).
+     Per-day tithi in the grid is computed OFFLINE at an approximate local
+     sunrise (pchApproxSunriseSetMin) — no network call per cell. ── */
+  const PCH_CAL_DOW = ['रवि','सोम','मंगल','बुध','गुरु','शुक्र','शनि'];
+  const pchCal = { open: false, y: 0, m: 0, sel: null, cache: {}, monthCache: {}, sig: '', token: 0, loading: false, sunInfo: null, swipeBound: false, locKey: '', followNow: false, nowStamp: 0, nowTimer: null };
+
+  function pchCalTz() { return (PCH && PCH.tzOffsetMin) || 330; }
+  function pchCalToday() {
+    const t = new Date(Date.now() + pchCalTz() * 60000);
+    return { y: t.getUTCFullYear(), m: t.getUTCMonth(), d: t.getUTCDate() };
+  }
+  function pchCalMinUTC() { const t = pchCalToday(); return Date.UTC(t.y, t.m, 1); }
+  function pchCalMaxUTC() {
+    const t = pchCalToday();
+    return Date.UTC(t.y, t.m, t.d) <= PCH_VRAT_END_UTC ? PCH_VRAT_END_UTC : Date.UTC(t.y, 11, 31);
+  }
+  function pchCalSunriseJD(y, m, d) {
+    const tz = pchCalTz();
+    const sr = pchApproxSunriseSetMin(y, m, d, tz);
+    return julianDay(new Date(Date.UTC(y, m, d) + (sr.rise - tz) * 60000));
+  }
+  function pchCalDayInfo(y, m, d) {
+    const key = y + '-' + m + '-' + d + '|' + PCH.lat + ',' + PCH.lon + '|' + pchCalTz();
+    if (pchCal.cache[key]) return pchCal.cache[key];
+    const jd = pchCalSunriseJD(y, m, d);
+    const lon = sunMoonLongitudes(jd);
+    const t = getTithi(lon.sun, lon.moon);
+    return (pchCal.cache[key] = { name: t.name, idx: t.index, krishna: t.index >= 15, nak: getNakshatra(lon.moon, jd) });
+  }
+  // Purnimant masa for every day of a month, looked up per day with the app's
+  // own getPurnimantMasa (so it matches the Vrat list / header in every year,
+  // including adhik-masa years). Cached per month; costs well under 1 ms/month.
+  function pchCalMonthMasa(y, m) {
+    const key = 'masa|' + y + '-' + m + '|' + PCH.lat + ',' + PCH.lon + '|' + pchCalTz();
+    if (pchCal.cache[key]) return pchCal.cache[key];
+    const dim = new Date(Date.UTC(y, m + 1, 0)).getUTCDate(), out = [];
+    for (let d = 1; d <= dim; d++) out.push(getPurnimantMasa(pchCalSunriseJD(y, m, d), pchCalDayInfo(y, m, d).idx));
+    return (pchCal.cache[key] = out);
+  }
+  // ── Phase 3: vrat / tyohar / holiday data for the visible month ──
+  // Uses the SAME builders as the home-page lists (so both always agree),
+  // pointed at an explicit month via their optional start argument.
+  function pchCalMonthData(y, m) {
+    const key = y + '-' + m + '|' + PCH.lat + ',' + PCH.lon + '|' + (PCH.state || '') + '|' + pchCalTz();
+    if (pchCal.monthCache[key]) return pchCal.monthCache[key];
+    const tz = pchCalTz(), dim = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+    const days = {}; // day-of-month -> { vrat: label|'', govt: bool, hol: [{name, cats}] }
+    const slot = function (d) { return days[d] || (days[d] = { vrat: '', govt: false, hol: [] }); };
+    // start one day early so the builder's "same tithi within 15 days" de-dupe sees the previous day
+    const prev = new Date(Date.UTC(y, m, 0));
+    const vrat = pchBuildVratTyoharList(dim + 1, { y: prev.getUTCFullYear(), m: prev.getUTCMonth(), d: prev.getUTCDate() });
+    vrat.forEach(function (ev) {
+      const l = new Date(ev.dateObj.getTime() + tz * 60000); // vrat dateObj = local 06:00 instant
+      if (l.getUTCFullYear() !== y || l.getUTCMonth() !== m) return;
+      const s = slot(l.getUTCDate());
+      s.vrat = ev.label;
+    });
+    // holiday dateObj = UTC midnight of the local date
+    pchBuildPublicHolidays(dim - 1, { y: y, m: m, d: 1 }, vrat).forEach(function (ev) {
+      const s = slot(ev.dateObj.getUTCDate());
+      s.hol.push({ name: ev.name, cats: ev.cats });
+      if (ev.cats.has('central') || ev.cats.has('state')) s.govt = true; // central / state govt holiday → red date, like Sunday
+    });
+    return (pchCal.monthCache[key] = { days: days });
+  }
+  // Short festival text for a cell: the vrat/tyohar if any, else the first holiday.
+  function pchCalFestText(s) {
+    if (!s) return '';
+    const t = s.vrat || (s.hol.length ? s.hol[0].name : '');
+    return t.replace(/\s*\([^)]*\)/g, '').split(', ')[0] || '';
+  }
+  // "कार्तिक कृष्ण पक्ष"  →  "कार्तिक कृष्ण प."  →  "कार्तिक कृ. प."
+  function pchCalPakshaForms(masa, krishna) {
+    const full = krishna ? 'कृष्ण' : 'शुक्ल', abbr = krishna ? 'कृ.' : 'शु.';
+    return [masa + ' ' + full + ' पक्ष', masa + ' ' + full + ' प.', masa + ' ' + abbr + ' प.'];
+  }
+  // Pick, per cell, the longest form that fits that cell's real width (so it
+  // adapts to phone/tablet/desktop). If even the shortest overflows (a long
+  // masa name such as मार्गशीर्ष on a narrow phone) it wraps onto two lines
+  // instead of being cut off with "…". A hidden/not-yet-laid-out calendar
+  // (width 0) keeps the full form and is re-fitted when it gets a size.
+  function pchCalFitPaksha() {
+    document.querySelectorAll('#pch-cal-grid .pch-cal-paksha').forEach(function (el) {
+      const forms = el.getAttribute('data-p').split('|');
+      el.classList.remove('wrap');
+      el.textContent = forms[0];
+      if (!el.clientWidth) return;
+      let i = 0;
+      while (el.scrollWidth > el.clientWidth + 1 && i < forms.length - 1) el.textContent = forms[++i];
+      if (el.scrollWidth > el.clientWidth + 1) el.classList.add('wrap');
+    });
+  }
+  function pchCalBindFit() {
+    let t = 0;
+    window.addEventListener('resize', function () { clearTimeout(t); t = setTimeout(pchCalFitPaksha, 120); });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(pchCalFitPaksha); // web-font widths differ from the fallback
+  }
+  function pchCalAnimate(dir) {
+    const g = document.getElementById('pch-cal-grid');
+    g.classList.remove('pch-cal-in-next', 'pch-cal-in-prev');
+    void g.offsetWidth;
+    g.classList.add(dir > 0 ? 'pch-cal-in-next' : 'pch-cal-in-prev');
+  }
+  // Swipe left → next month, right → previous (mostly-horizontal, quick gestures only).
+  function pchCalBindSwipe() {
+    if (pchCal.swipeBound) return;
+    const card = document.getElementById('pch-cal-grid').closest('.pch-cal-card');
+    if (!card) return;
+    pchCal.swipeBound = true;
+    let sx = 0, sy = 0, st = 0;
+    card.addEventListener('touchstart', function (e) { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; st = Date.now(); }, { passive: true });
+    card.addEventListener('touchend', function (e) {
+      const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && Date.now() - st < 700) window.pchCalNav(dx < 0 ? 1 : -1);
+    }, { passive: true });
+  }
+
+  function pchCalFmtHM(date) {
+    const l = new Date(date.getTime() + pchCalTz() * 60000);
+    const h = l.getUTCHours();
+    return ((h % 12) || 12) + ':' + pad2(l.getUTCMinutes()) + (h >= 12 ? ' PM' : ' AM');
+  }
+  function pchCalIsToday(s) { const t = pchCalToday(); return s.y === t.y && s.m === t.m && s.d === t.d; }
+
+  function pchCalRender() {
+    const grid = document.getElementById('pch-cal-grid');
+    if (!grid) return;
+    const y = pchCal.y, m = pchCal.m;
+    const today = pchCalToday(), minU = pchCalMinUTC(), maxU = pchCalMaxUTC();
+    document.getElementById('pch-cal-dow').innerHTML = PCH_CAL_DOW.map(function (n) { return '<span>' + n + '</span>'; }).join('');
+    document.getElementById('pch-cal-month').textContent = MONTH_NAMES_HI[m] + ' ' + y;
+    let md = null;
+    try { md = pchCalMonthData(y, m); } catch (e) { console.error('Calendar vrat/holiday data failed:', e); }
+
+    // Masa shown under the month name (first → last day; "A – B" if it changes mid-month)
+    const dimM = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+    const masaOf = pchCalMonthMasa(y, m), ma = masaOf[0], mb = masaOf[dimM - 1];
+    document.getElementById('pch-cal-sub').textContent = (ma === mb ? ma : ma + ' – ' + mb) + ' (पूर्णिमांत)';
+
+    const lead = new Date(Date.UTC(y, m, 1)).getUTCDay();
+    const dim = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+    let html = '';
+    for (let i = 0; i < lead; i++) html += '<div class="pch-cal-cell pch-cal-empty"></div>';
+    for (let d = 1; d <= dim; d++) {
+      const u = Date.UTC(y, m, d), info = pchCalDayInfo(y, m, d);
+      const dow = (lead + d - 1) % 7;
+      const isSel = pchCal.sel && pchCal.sel.y === y && pchCal.sel.m === m && pchCal.sel.d === d;
+      const isToday = today.y === y && today.m === m && today.d === d;
+      const cls = 'pch-cal-cell' + (dow === 0 ? ' is-sun' : '') + (isToday ? ' is-today' : '') + (isSel ? ' is-sel' : '') + (md && md.days[d] && md.days[d].govt ? ' is-hol' : '') + ((u < minU || u > maxU) ? ' is-dis' : '');
+      const pk = pchCalPakshaForms(masaOf[d - 1], info.krishna), paksha = pk[0];
+      html += '<button type="button" class="' + cls + '" onclick="pchCalSelect(' + y + ',' + m + ',' + d + ')" aria-label="' + d + ' ' + MONTH_NAMES_HI[m] + ' ' + paksha + ' ' + info.name + '"'
+            + (isSel ? ' aria-pressed="true"' : '') + '>'
+            + '<span class="pch-cal-num">' + d + '</span><span class="pch-cal-tithi">' + info.name + '</span><span class="pch-cal-paksha" data-p="' + pk.join('|') + '">' + paksha + '</span>'
+            + '<span class="pch-cal-nak">' + info.nak + '</span><span class="pch-cal-fest">' + pchCalFestText(md && md.days[d]) + '</span></button>';
+    }
+    grid.innerHTML = html;
+    pchCalFitPaksha();
+    document.getElementById('pch-cal-prev').disabled = Date.UTC(y, m, 1) <= minU;
+    document.getElementById('pch-cal-next').disabled = Date.UTC(y, m + 1, 1) > maxU;
+    pchCal.sig = y + '-' + m + '|' + PCH.lat + ',' + PCH.lon + '|' + pchCalTz() + '|' + today.d;
+  }
+
+  function pchCalUpdateInfo() {
+    if (!pchCal.open || !pchCal.sel) return;
+    const s = pchCal.sel, tz = pchCalTz(), wd = WEEKDAY_NAMES[new Date(Date.UTC(s.y, s.m, s.d)).getUTCDay()];
+    document.getElementById('pch-cal-date').textContent = wd + ', ' + s.d + ' ' + MONTH_NAMES_HI[s.m] + ' ' + s.y;
+    const inp = document.getElementById('pch-cal-time-input');
+    let base = null, note = '', isSunrise = false, isLive = false;
+    if (pchCal.loading) {
+      note = 'सूर्योदय की पुष्टि हो रही है…';
+    } else if (PCH.customDateTime) {
+      base = PCH.customDateTime;
+      const si = pchCal.sunInfo;
+      if (pchCal.followNow) {
+        isLive = true;
+      } else if (si && Math.abs(si.sunrise.getTime() - base.getTime()) < 60000) {
+        isSunrise = true;
+        note = si.approx ? 'अनुमानित सूर्योदय — Open-Meteo से पुष्टि नहीं हो सकी' : 'Open-Meteo से पुष्ट';
+      }
+    } else { base = new Date(); isLive = true; }
+    inp.disabled = pchCal.loading;
+    if (base && document.activeElement !== inp) {
+      const l = new Date(base.getTime() + tz * 60000);
+      inp.value = pad2(l.getUTCHours()) + ':' + pad2(l.getUTCMinutes());
+    }
+    document.getElementById('pch-cal-time-note').textContent = note;
+    [['pch-cal-btn-sunrise', isSunrise], ['pch-cal-btn-live', isLive]].forEach(function (p) {
+      const b = document.getElementById(p[0]);
+      if (b) { b.classList.toggle('is-active', p[1]); b.setAttribute('aria-pressed', p[1] ? 'true' : 'false'); }
+    });
+    const isGps = PCH.name === 'वर्तमान GPS स्थान';
+    const place = (PCH.name || '—') + (PCH.state ? ', ' + PCH.state : '');
+    document.getElementById('pch-cal-loc').innerHTML = '<span>' + place + '</span><small>मोड: ' + (isGps ? 'GPS' : 'Manual') + '</small>';
+  }
+
+  // Tap on a date: today → back to Live; any other date → confirm that
+  // day's sunrise from Open-Meteo (offline fallback if it can't answer),
+  // set time = sunrise and recalculate the whole panchang.
+  window.pchCalSelect = async function (y, m, d, forceSunrise) {
+    if (Date.UTC(y, m, d) < pchCalMinUTC() || Date.UTC(y, m, d) > pchCalMaxUTC()) return;
+    pchCalBlurTime();
+    pchCal.followNow = false;
+    pchCal.sel = { y: y, m: m, d: d };
+    const token = ++pchCal.token;
+    if (pchCalIsToday(pchCal.sel) && !forceSunrise) {
+      pchCal.loading = false; pchCal.sunInfo = null;
+      pchCalRender();
+      window.pchResetToLiveDateTime();
+      pchCalUpdateInfo();
+      return;
+    }
+    pchCal.loading = true;
+    pchCalRender(); pchCalUpdateInfo();
+    const ds = y + '-' + pad2(m + 1) + '-' + pad2(d);
+    const r = await pchSunTimesWithFallback(ds);
+    if (token !== pchCal.token) return; // user tapped another date meanwhile
+    pchCal.loading = false;
+    pchCal.sunInfo = { sunrise: r.sunrise, approx: !!r.approx };
+    PCH.customDateTime = r.sunrise;
+    pchBusy.show('calc');
+    pchCalUpdateInfo();
+    pchRunCalculation();
+  };
+  // Time picker: any time on the selected date (location's own clock).
+  window.pchCalTimeChanged = function (v) {
+    if (!v || !pchCal.sel || PCH.lat === null) return;
+    pchCal.followNow = false;
+    const hm = v.split(':').map(Number), s = pchCal.sel;
+    PCH.customDateTime = new Date(Date.UTC(s.y, s.m, s.d, hm[0], hm[1]) - pchCalTz() * 60000);
+    pchBusy.show('calc');
+    pchCalUpdateInfo();
+    pchRunCalculation();
+  };
+  window.pchCalSetSunrise = function () {
+    if (pchCal.sel) window.pchCalSelect(pchCal.sel.y, pchCal.sel.m, pchCal.sel.d, true);
+  };
+  // Release focus from the time box so the field can show the new auto-selected time
+  function pchCalBlurTime() {
+    const inp = document.getElementById('pch-cal-time-input');
+    if (inp && document.activeElement === inp) inp.blur();
+  }
+  window.pchCalScrollToCalendar = function () {
+    const el = document.querySelector('#pch-cal-block .pch-cal-card');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  window.pchCalOpenTimePicker = function (inp) {
+    try { if (inp && typeof inp.showPicker === 'function') inp.showPicker(); } catch (e) {}
+  };
+  window.pchCalLive = function () {
+    pchCalBlurTime();
+    pchCal.token++; pchCal.loading = false; pchCal.sunInfo = null;
+    if (!pchCal.sel || pchCalIsToday(pchCal.sel)) {
+      pchCal.followNow = false;
+      if (!pchCal.sel) window.pchCalGoToday();
+      window.pchResetToLiveDateTime();
+      pchCalUpdateInfo();
+      return;
+    }
+    // Another date is selected: keep that date, run the clock at the current time of day.
+    pchCal.followNow = true;
+    pchCalApplyNow(true);
+    pchCalScheduleNow();
+  };
+  // Selected date + current time-of-day (location clock) as the calculation instant.
+  function pchCalApplyNow(showBusy) {
+    if (!pchCal.sel || PCH.lat === null) return;
+    const s = pchCal.sel, tz = pchCalTz(), l = new Date(Date.now() + tz * 60000);
+    const dt = new Date(Date.UTC(s.y, s.m, s.d, l.getUTCHours(), l.getUTCMinutes()) - tz * 60000);
+    PCH.customDateTime = dt;
+    pchCal.nowStamp = dt.getTime();
+    if (showBusy) pchBusy.show('calc');
+    pchCalUpdateInfo();
+    pchRunCalculation();
+  }
+  function pchCalScheduleNow() {
+    if (pchCal.nowTimer) { clearTimeout(pchCal.nowTimer); pchCal.nowTimer = null; }
+    if (!pchCal.followNow) return;
+    pchCal.nowTimer = setTimeout(function () {
+      pchCal.nowTimer = null;
+      if (!pchCal.followNow) return;
+      // something else (e.g. the location selector) changed the instant → stop following the clock
+      if (!PCH.customDateTime || PCH.customDateTime.getTime() !== pchCal.nowStamp) { pchCal.followNow = false; pchCalUpdateInfo(); return; }
+      if (pchIsPageVisible()) pchCalApplyNow(false);
+      pchCalScheduleNow();
+    }, 60000 - (Date.now() % 60000) + 50);
+  }
+  window.pchCalNav = function (dir) {
+    let y = pchCal.y, m = pchCal.m + dir;
+    if (m < 0) { m = 11; y--; } else if (m > 11) { m = 0; y++; }
+    if (Date.UTC(y, m + 1, 0) < pchCalMinUTC() || Date.UTC(y, m, 1) > pchCalMaxUTC()) return;
+    pchCal.y = y; pchCal.m = m;
+    pchCalRender();
+    pchCalAnimate(dir);
+  };
+  window.pchCalGoToday = function () {
+    const t = pchCalToday();
+    pchCal.y = t.y; pchCal.m = t.m; pchCal.sel = t;
+    pchCalRender(); pchCalUpdateInfo();
+  };
+  // Called after every pchRunCalculation (every minute / location change):
+  // keeps the time + location rows fresh; re-draws the grid only if the
+  // visible month's inputs (location, timezone, today) changed.
+  window.pchCalOnCalc = function () {
+    if (!pchCal.open) { // first calculation (location is known now): start the calendar, selected = today
+      pchCal.open = true;
+      pchCalBindSwipe();
+      pchCalBindFit();
+      window.pchCalGoToday();
+    }
+    const lk = PCH.lat + ',' + PCH.lon + '|' + (PCH.state || '') + '|' + pchCalTz();
+    if (pchCal.locKey && pchCal.locKey !== lk) { pchCal.cache = {}; pchCal.monthCache = {}; pchCal.sig = ''; }
+    pchCal.locKey = lk;
+    if (PCH.customDateTime && !pchCal.loading) { // e.g. set via the location selector
+      const l = new Date(PCH.customDateTime.getTime() + pchCalTz() * 60000);
+      const y = l.getUTCFullYear(), m = l.getUTCMonth(), d = l.getUTCDate(), s = pchCal.sel;
+      if (!s || s.y !== y || s.m !== m || s.d !== d) { pchCal.sel = { y: y, m: m, d: d }; pchCal.y = y; pchCal.m = m; pchCal.sunInfo = null; pchCalRender(); }
+    }
+    const today = pchCalToday();
+    if (pchCal.sig !== pchCal.y + '-' + pchCal.m + '|' + PCH.lat + ',' + PCH.lon + '|' + pchCalTz() + '|' + today.d) pchCalRender();
+    pchCalUpdateInfo();
+  };
+
   let pchCalcGeneration = 0;
 
   window.pchRunCalculation = async function pchRunCalculation() {
@@ -1814,6 +2171,7 @@
     try { await p; } finally {
       if (ours && gen === pchCalcGeneration) pchBusy.hide();
     }
+    if (typeof window.pchCalOnCalc === 'function') { try { window.pchCalOnCalc(); } catch (e) {} }
   };
 
   async function pchRunCalculationInner() {
@@ -1828,12 +2186,15 @@
         const tzForDate = PCH.tzOffsetMin || 330; // best guess until the fetch below resolves the real one
         const tmrw = new Date(today.getTime() + 86400000);
         const yday = new Date(today.getTime() - 86400000);
+        // Live mode keeps the original strict behaviour; a user-chosen date/time
+        // (calendar) may be beyond the API's range, so it gets the fallback.
+        const getSun = PCH.customDateTime ? pchSunTimesWithFallback : pchFetchSunTimes;
         [sunToday, sunTomorrow, sunYesterday] = await Promise.all([
-          pchFetchSunTimes(ymdAtOffset(today, tzForDate)),
-          pchFetchSunTimes(ymdAtOffset(tmrw, tzForDate)),
+          getSun(ymdAtOffset(today, tzForDate)),
+          getSun(ymdAtOffset(tmrw, tzForDate)),
           // only feeds the midnight->sunrise Choghadiya slots; if it fails we
           // fall back to an approximation below instead of blocking the page
-          pchFetchSunTimes(ymdAtOffset(yday, tzForDate)).catch(function () { return null; })
+          getSun(ymdAtOffset(yday, tzForDate)).catch(function () { return null; })
         ]);
       } catch (e) {
         if (myGen === pchCalcGeneration) pchSetStatus('सूर्योदय/सूर्यास्त डेटा प्राप्त करने में त्रुटि। इंटरनेट जाँचें।', true);
@@ -1869,13 +2230,6 @@
       const moonRS = findMoonRiseSet(Math.floor(julianDay(addMinutes(today, -tz))), PCH.lat, PCH.lon);
 
       if (myGen !== pchCalcGeneration) return; // abandon stale result just before painting
-
-      const elementsLiveLabelEl = document.getElementById('pch-elements-live-label');
-      if (elementsLiveLabelEl) {
-        elementsLiveLabelEl.textContent = PCH.customDateTime
-          ? '(चयनित दिनांक व समय अनुसार — स्थिर)'
-          : '(अभी के समय अनुसार — स्वतः अपडेट होता है)';
-      }
 
       const localNow = new Date(today.getTime() + tz*60000);
       // Formats a JD as "<time> तक" when it falls on today, "<time> कल तक"
