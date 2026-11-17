@@ -72,7 +72,7 @@
       body: 'आपके स्थान और समय के अनुसार आज का पंचांग — तिथि, नक्षत्र, मुहूर्त और व्रत-त्योहार एक ही जगह। आइए एक मिनट में देखें कि यह कैसे काम करता है।',
       next: 'शुरू करें', skip: 'अभी नहीं' },
 
-    date: { page: 'main', target: function () { return q('#pch-content .about-section:first-child .about-card'); },
+    date: { page: 'main', target: function () { return q('#pch-content > .about-section .about-card'); },
       title: 'आज की तिथि',
       body: 'यहाँ आज की तारीख, विक्रम संवत, मास, पक्ष, तिथि और ऋतु दिखती है। सब कुछ आपकी GPS location और अभी के समय के अनुसार निकाला जाता है।' },
 
@@ -86,6 +86,11 @@
       title: 'बदलाव का समय और अभी कितना बीता',
       body: 'बाईं पट्टी के हर बिंदु के साथ वह सटीक समय लिखा है जब एक तिथि समाप्त होती है और अगली शुरू होती है। वर्तमान तिथि के कार्ड की प्रगति पट्टी बताती है कि कितना समय बीता, कितना शेष है और कुल कितने प्रतिशत — यह अपने-आप अपडेट होती रहती है।' },
 
+    cal: { page: 'main', badge: true,
+      target: function () { return q('#pch-cal-block .pch-cal-card'); },
+      title: 'पंचांग कैलेंडर',
+      body: 'पूरे महीने का पंचांग हमेशा सबसे ऊपर — हर तारीख़ पर पक्ष, तिथि, नक्षत्र और व्रत-त्योहार या अवकाश का नाम। किसी तारीख़ को छूते ही उस दिन के सूर्योदय के अनुसार नीचे का पूरा पंचांग बदल जाता है, और आप चाहें तो समय भी बदल सकते हैं। महीना बदलने के लिए ‹ › दबाएँ या उँगली से सरकाएँ।' },
+
     place: { page: 'main', target: function () { return q('#pch-badle-bar button'); },
       title: 'स्थान व समय बदलें',
       body: 'किसी दूसरे शहर का, या किसी और तारीख़ और समय का पंचांग देखना हो तो यह बटन दबाएँ।' },
@@ -97,7 +102,7 @@
     done: { page: 'main', center: true, art: '✅', title: 'सब तैयार!',
       body: 'यह परिचय दोबारा देखना हो तो कभी भी ⚙️ → App Tour चुनें।', next: 'पंचांग देखें', last: true }
   };
-  var FLOW = ['welcome', 'date', 'place', 'header', 'tap', 'd1', 'done'];
+  var FLOW = ['welcome', 'cal', 'date', 'place', 'header', 'tap', 'd1', 'done'];
 
   /* ── DOM ── */
   var root, spot, tip, hand, refs = {};
