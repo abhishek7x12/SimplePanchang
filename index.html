@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" href="favicon.png">
 <link rel="shortcut icon" href="favicon.png" type="image/png">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Figtree:wght@400;500;600;700&family=Tiro+Devanagari+Hindi&family=Hind:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20261116i">
+<link rel="stylesheet" href="styles.css?v=20261118b">
 </head>
 <body>
 
@@ -104,6 +104,32 @@
 
       <div id="pch-content" style="display:none;">
 
+        <!-- ── PANCHANG CALENDAR (always shown at the top of the panchang) ── -->
+      <div id="pch-cal-block">
+        <div class="about-section">
+          <div class="about-card pch-cal-card">
+            <div class="pch-cal-head">
+              <button type="button" class="pch-cal-nav" id="pch-cal-prev" onclick="pchCalNav(-1)" aria-label="पिछला महीना">‹</button>
+              <div class="pch-cal-title">
+                <div class="pch-cal-month" id="pch-cal-month"></div>
+                <div class="pch-cal-sub" id="pch-cal-sub"></div>
+              </div>
+              <button type="button" class="pch-cal-nav" id="pch-cal-next" onclick="pchCalNav(1)" aria-label="अगला महीना">›</button>
+            </div>
+            <div class="pch-cal-dow" id="pch-cal-dow"></div>
+            <div class="pch-cal-grid is-detailed" id="pch-cal-grid"></div>
+          </div>
+        </div>
+        <div class="about-section">
+          <div class="about-card pch-cal-info">
+            <div class="pch-cal-info-row"><span class="pch-cal-info-ico">📅</span><div class="pch-cal-info-txt" id="pch-cal-date"></div><button type="button" class="pch-cal-chip" onclick="pchCalScrollToCalendar()">दिनांक बदलें</button></div>
+            <div class="pch-cal-info-row pch-cal-time-row"><span class="pch-cal-info-ico">🕐</span><div class="pch-cal-info-txt"><input type="time" id="pch-cal-time-input" class="pch-cal-time-input" onclick="pchCalOpenTimePicker(this)" onchange="pchCalTimeChanged(this.value)" aria-label="समय चुनें"><small id="pch-cal-time-note"></small></div><div class="pch-cal-actions pch-cal-actions--inline"><button type="button" class="pch-cal-chip" id="pch-cal-btn-sunrise" aria-pressed="false" onclick="pchCalSetSunrise()">🌅 सूर्योदय</button><button type="button" class="pch-cal-chip" id="pch-cal-btn-live" aria-pressed="true" onclick="pchCalLive()">🔴 अभी</button></div></div>
+            <div class="pch-cal-info-row pch-cal-place"><span class="pch-cal-info-ico">📍</span><div class="pch-cal-info-txt" id="pch-cal-loc"></div><button type="button" class="pch-cal-chip" onclick="pchOpenLocationSelector()">स्थान बदलें</button></div>
+            <div class="pch-cal-calc-note"><strong>Note:</strong> पंचांग की गणना चुने गए समय, दिनांक व स्थान के आधार पर की जाती है।</div>
+          </div>
+        </div>
+      </div>
+
         <!-- Date -->
         <div class="about-section">
           <div class="about-section-title">दिनांक</div>
@@ -123,7 +149,7 @@
 
         <!-- Panchang core elements -->
         <div class="about-section">
-          <div class="about-section-title">पंचांग तत्व <span id="pch-elements-live-label" style="font-weight:400; font-size:11px; color:var(--ink-soft); text-transform:none; letter-spacing:normal;">(अभी के समय अनुसार — स्वतः अपडेट होता है)</span></div>
+          <div class="about-section-title">पंचांग तत्व</div>
           <div class="about-card">
             <div class="pch-grid">
               <div class="pch-item pch-tap" data-eld="nakshatra" role="button" tabindex="0" aria-label="नक्षत्र — विस्तृत समय-रेखा देखें"><div class="pch-label">नक्षत्र</div><div class="pch-value" id="pch-nakshatra"></div></div>
@@ -148,13 +174,12 @@
 
         <!-- Choghadiya -->
         <div class="about-section">
-          <div class="about-section-title"><span id="pch-chogh-title">चौघड़िया</span></div>
+          <div class="about-section-head">
+            <div class="about-section-title"><span id="pch-chogh-title">चौघड़िया</span></div>
+            <button type="button" class="sec-more-btn sec-more-btn--saffron" onclick="showChoghadiyaFull()">सम्पूर्ण चौघड़िया देखें <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+          </div>
           <div class="about-card">
             <div id="pch-choghadiya-list"></div>
-            <button class="vrat-viewmore-btn" onclick="showChoghadiyaFull()">
-              सम्पूर्ण दिन एवं रात का चौघड़िया देखें
-              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-            </button>
           </div>
         </div>
 
@@ -187,29 +212,27 @@
 
         <!-- Vrat / Tyohar -->
         <div class="about-section">
-          <div class="about-section-title">व्रत त्योहार</div>
+          <div class="about-section-head">
+            <div class="about-section-title">व्रत त्योहार</div>
+            <button type="button" class="sec-more-btn sec-more-btn--saffron" onclick="showVratTyoharFull()">सम्पूर्ण व्रत-त्योहार देखें <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+          </div>
           <div class="about-card">
             <div id="pch-vrat-list">
               <div style="padding:10px 2px; color:var(--ink-soft); font-size:13px;">लोड हो रहा है…</div>
             </div>
-            <button class="vrat-viewmore-btn" onclick="showVratTyoharFull()">
-              पूरी व्रत-त्योहार सूची देखें
-              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-            </button>
           </div>
         </div>
 
         <!-- Public Holidays -->
         <div class="about-section">
-          <div class="about-section-title">सार्वजनिक अवकाश</div>
+          <div class="about-section-head">
+            <div class="about-section-title">सार्वजनिक अवकाश</div>
+            <button type="button" class="sec-more-btn sec-more-btn--green" onclick="showHolidaysFull()">सम्पूर्ण अवकाश देखें <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+          </div>
           <div class="about-card">
             <div id="pch-holiday-list">
               <div style="padding:10px 2px; color:var(--ink-soft); font-size:13px;">लोड हो रहा है…</div>
             </div>
-            <button class="hol-viewmore-btn" onclick="showHolidaysFull()">
-              पूरी अवकाश सूची देखें
-              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-            </button>
           </div>
         </div>
 
@@ -365,8 +388,8 @@
       <div class="about-section">
         <div class="about-section-title">Version</div>
         <div class="about-card">
-          <p><strong>Version 2.2.5</strong></p>
-          <p>Released on 16 November 2026</p>
+          <p><strong>Version 3.0.8</strong></p>
+          <p>Released on 18 November 2026</p>
         </div>
       </div>
 
@@ -558,7 +581,7 @@
     </div>
   </div>
 
-<script src="panchang.js?v=20261116i"></script>
+<script src="panchang.js?v=20261118b"></script>
 <script src="tour.js?v=20261116d"></script>
 </body>
 </html>
