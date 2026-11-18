@@ -1909,10 +1909,16 @@
     const t = s.vrat || (s.hol.length ? s.hol[0].name : '');
     return t.replace(/\s*\([^)]*\)/g, '').split(', ')[0] || '';
   }
-  // "कार्तिक कृष्ण पक्ष"  →  "कार्तिक कृष्ण प."  →  "कार्तिक कृ. प."
+  // Short masa names for the calendar cells
+  const MASA_SHORT = {
+    'चैत्र':'चै.', 'वैशाख':'वै.', 'ज्येष्ठ':'ज्ये.', 'आषाढ़':'आषा.',
+    'श्रावण':'श्रा.', 'भाद्रपद':'भा.', 'आश्विन':'आश्वि.', 'कार्तिक':'का.',
+    'मार्गशीर्ष':'मार्ग.', 'पौष':'पौ.', 'माघ':'मा.', 'फाल्गुन':'फा.'
+  };
+  // "कार्तिक कृष्ण पक्ष"  →  "का. कृ. प."
   function pchCalPakshaForms(masa, krishna) {
-    const full = krishna ? 'कृष्ण' : 'शुक्ल', abbr = krishna ? 'कृ.' : 'शु.';
-    return [masa + ' ' + full + ' पक्ष', masa + ' ' + full + ' प.', masa + ' ' + abbr + ' प.'];
+    const abbr = krishna ? 'कृ.' : 'शु.';
+    return [(MASA_SHORT[masa] || masa) + ' ' + abbr + ' प.'];
   }
   // Pick, per cell, the longest form that fits that cell's real width (so it
   // adapts to phone/tablet/desktop). If even the shortest overflows (a long
@@ -1988,7 +1994,8 @@
       const isToday = today.y === y && today.m === m && today.d === d;
       const cls = 'pch-cal-cell' + (dow === 0 ? ' is-sun' : '') + (isToday ? ' is-today' : '') + (isSel ? ' is-sel' : '') + (md && md.days[d] && md.days[d].govt ? ' is-hol' : '') + ((u < minU || u > maxU) ? ' is-dis' : '');
       const pk = pchCalPakshaForms(masaOf[d - 1], info.krishna), paksha = pk[0];
-      html += '<button type="button" class="' + cls + '" onclick="pchCalSelect(' + y + ',' + m + ',' + d + ')" aria-label="' + d + ' ' + MONTH_NAMES_HI[m] + ' ' + paksha + ' ' + info.name + '"'
+      const pakshaFull = masaOf[d - 1] + ' ' + (info.krishna ? 'कृष्ण' : 'शुक्ल') + ' पक्ष';
+      html += '<button type="button" class="' + cls + '" onclick="pchCalSelect(' + y + ',' + m + ',' + d + ')" aria-label="' + d + ' ' + MONTH_NAMES_HI[m] + ' ' + pakshaFull + ' ' + info.name + '"'
             + (isSel ? ' aria-pressed="true"' : '') + '>'
             + '<span class="pch-cal-num">' + d + '</span><span class="pch-cal-tithi">' + info.name + '</span><span class="pch-cal-paksha" data-p="' + pk.join('|') + '">' + paksha + '</span>'
             + '<span class="pch-cal-nak">' + info.nak + '</span><span class="pch-cal-fest">' + pchCalFestText(md && md.days[d]) + '</span></button>';
