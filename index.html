@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" href="favicon.png">
 <link rel="shortcut icon" href="favicon.png" type="image/png">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Figtree:wght@400;500;600;700&family=Tiro+Devanagari+Hindi&family=Hind:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20261118b">
+<link rel="stylesheet" href="styles.css?v=20261119g">
 </head>
 <body>
 
@@ -120,19 +120,11 @@
             <div class="pch-cal-grid is-detailed" id="pch-cal-grid"></div>
           </div>
         </div>
-        <div class="about-section">
-          <div class="about-card pch-cal-info">
-            <div class="pch-cal-info-row"><span class="pch-cal-info-ico">📅</span><div class="pch-cal-info-txt" id="pch-cal-date"></div><button type="button" class="pch-cal-chip" onclick="pchCalScrollToCalendar()">दिनांक बदलें</button></div>
-            <div class="pch-cal-info-row pch-cal-time-row"><span class="pch-cal-info-ico">🕐</span><div class="pch-cal-info-txt"><input type="time" id="pch-cal-time-input" class="pch-cal-time-input" onclick="pchCalOpenTimePicker(this)" onchange="pchCalTimeChanged(this.value)" aria-label="समय चुनें"><small id="pch-cal-time-note"></small></div><div class="pch-cal-actions pch-cal-actions--inline"><button type="button" class="pch-cal-chip" id="pch-cal-btn-sunrise" aria-pressed="false" onclick="pchCalSetSunrise()">🌅 सूर्योदय</button><button type="button" class="pch-cal-chip" id="pch-cal-btn-live" aria-pressed="true" onclick="pchCalLive()">🔴 अभी</button></div></div>
-            <div class="pch-cal-info-row pch-cal-place"><span class="pch-cal-info-ico">📍</span><div class="pch-cal-info-txt" id="pch-cal-loc"></div><button type="button" class="pch-cal-chip" onclick="pchOpenLocationSelector()">स्थान बदलें</button></div>
-            <div class="pch-cal-calc-note"><strong>Note:</strong> पंचांग की गणना चुने गए समय, दिनांक व स्थान के आधार पर की जाती है।</div>
-          </div>
-        </div>
       </div>
 
         <!-- Date -->
         <div class="about-section">
-          <div class="about-section-title">दिनांक</div>
+          <div class="about-section-title">पंचांग तिथि</div>
           <div class="about-card">
             <div class="pch-grid">
               <div class="pch-item"><div class="pch-label">दिनांक</div><div class="pch-value" id="pch-date-summary"></div></div>
@@ -236,6 +228,16 @@
           </div>
         </div>
 
+        <!-- Date / time / place (moved below Public Holidays) -->
+        <div class="about-section">
+          <div class="about-card pch-cal-info">
+            <div class="pch-cal-info-row"><span class="pch-cal-info-ico">📅</span><div class="pch-cal-info-txt" id="pch-cal-date"></div><button type="button" class="pch-cal-chip" onclick="pchCalScrollToCalendar()">दिनांक बदलें</button></div>
+            <div class="pch-cal-info-row pch-cal-time-row"><span class="pch-cal-info-ico">🕐</span><div class="pch-cal-info-txt"><input type="time" id="pch-cal-time-input" class="pch-cal-time-input" onclick="pchCalOpenTimePicker(this)" onchange="pchCalTimeChanged(this.value)" aria-label="समय चुनें"><small id="pch-cal-time-note"></small></div><div class="pch-cal-actions pch-cal-actions--inline"><button type="button" class="pch-cal-chip" id="pch-cal-btn-sunrise" aria-pressed="false" onclick="pchCalSetSunrise()">🌅 सूर्योदय</button><button type="button" class="pch-cal-chip" id="pch-cal-btn-live" aria-pressed="true" onclick="pchCalLive()">🔴 अभी</button></div></div>
+            <div class="pch-cal-info-row pch-cal-place"><span class="pch-cal-info-ico">📍</span><div class="pch-cal-info-txt" id="pch-cal-loc"></div><button type="button" class="pch-cal-chip" onclick="pchOpenLocationSelector()">स्थान बदलें</button></div>
+            <div class="pch-cal-calc-note"><strong>Note:</strong> पंचांग की गणना चुने गए समय, दिनांक व स्थान के आधार पर की जाती है।</div>
+          </div>
+        </div>
+
       </div>
 
       <div id="pch-badle-bar" style="display:none; justify-content:center; margin-top:28px;">
@@ -256,9 +258,12 @@
       <div class="ab-title">व्रत त्योहार सूची</div>
     </div>
     <div class="about-body">
-      <div style="padding-top:20px; padding-bottom:4px;">
-      </div>
       <div class="about-section">
+        <div class="pch-cal-head">
+          <button type="button" class="pch-cal-nav" id="vrat-month-prev" onclick="pchVratNav(-1)" aria-label="पिछला महीना">‹</button>
+          <div class="pch-cal-title"><div class="pch-cal-month" id="vrat-month-title"></div></div>
+          <button type="button" class="pch-cal-nav" id="vrat-month-next" onclick="pchVratNav(1)" aria-label="अगला महीना">›</button>
+        </div>
         <div class="about-card" id="vrat-full-list">
           <div style="padding:10px 2px; color:var(--ink-soft); font-size:13px;">लोड हो रहा है…</div>
         </div>
@@ -277,9 +282,12 @@
       <div class="ab-title">सार्वजनिक अवकाश सूची</div>
     </div>
     <div class="about-body">
-      <div style="padding-top:20px; padding-bottom:4px;">
-      </div>
       <div class="about-section">
+        <div class="pch-cal-head">
+          <button type="button" class="pch-cal-nav" id="hol-month-prev" onclick="pchHolNav(-1)" aria-label="पिछला महीना">‹</button>
+          <div class="pch-cal-title"><div class="pch-cal-month" id="hol-month-title"></div></div>
+          <button type="button" class="pch-cal-nav" id="hol-month-next" onclick="pchHolNav(1)" aria-label="अगला महीना">›</button>
+        </div>
         <div class="hol-filter-row" id="hol-filter-row"></div>
         <div class="about-card" id="hol-full-list">
           <div style="padding:10px 2px; color:var(--ink-soft); font-size:13px;">लोड हो रहा है…</div>
@@ -388,8 +396,8 @@
       <div class="about-section">
         <div class="about-section-title">Version</div>
         <div class="about-card">
-          <p><strong>Version 3.0.8</strong></p>
-          <p>Released on 18 November 2026</p>
+          <p><strong>Version 3.2.0</strong></p>
+          <p>Released on 19 November 2026</p>
         </div>
       </div>
 
@@ -581,7 +589,7 @@
     </div>
   </div>
 
-<script src="panchang.js?v=20261118b"></script>
+<script src="panchang.js?v=20261119l"></script>
 <script src="tour.js?v=20261116d"></script>
 </body>
 </html>
