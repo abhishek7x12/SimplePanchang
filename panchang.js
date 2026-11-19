@@ -2618,7 +2618,7 @@
     return !!code && rule.states.indexOf(code) !== -1;
   }
 
-  function pchBuildPublicHolidays(daysAhead, startYMD, vratEvents) { // optional: local {y,m,d} start + the vrat events to derive lunar holidays from
+  function pchBuildPublicHolidays(daysAhead, startYMD, vratEvents, opts) { // optional: local {y,m,d} start + the vrat events to derive lunar holidays from; opts.calc = true -> CALENDAR mode: tithi-based dates follow the Panchang calculation (the Vrat/Tyohar list); default = HOLIDAY LIST mode: dates follow the published lists
     const tz = (PCH && PCH.tzOffsetMin) || 330;
     const nowBase = (PCH && PCH.customDateTime) ? PCH.customDateTime.getTime() : Date.now();
     const localNow = new Date(nowBase + tz * 60000);
@@ -2628,8 +2628,21 @@
     const merged = {}; // key: 'YYYY-M-D' -> { dateObj, name (display title), cats:Set (every body that declared a holiday), entries:[{name,cats}], ruleLabels:[] }
 
     const isRJ = pchStateCode(PCH.state) === 'RJ';
+    const calcMode = !!(opts && opts.calc);
+    const computedLunar = []; // [{ ms, name }] — tithi-computed holidays (used in calc mode to out-rank published-list dates one day off)
+    if (calcMode) {
+      pchHolVaishnavJanm = {};
+      (vratEvents || PCH_VRAT_EVENTS || []).forEach(ev => { if (ev.label.indexOf('वैष्णव श्री कृष्ण जन्माष्टमी') !== -1) pchHolVaishnavJanm[+ev.dateObj] = true; });
+      (vratEvents || PCH_VRAT_EVENTS || []).forEach(ev => {
+        for (let i = 0; i < HOL_LUNAR_RULES.length; i++) {
+          const rule = HOL_LUNAR_RULES[i];
+          if (rule.test(ev) && pchStateAllowed(rule)) computedLunar.push({ ms: Date.UTC(ev.dateObj.getUTCFullYear(), ev.dateObj.getUTCMonth(), ev.dateObj.getUTCDate()), name: rule.name });
+        }
+      });
+    }
     function addEvent(dateUTCms, name, cats, fromRJList, vratLabel) {
       if (dateUTCms < todayUTC || dateUTCms > cutoffUTC) return;
+      if (calcMode && !vratLabel && computedLunar.some(c => c.name === name && Math.abs(c.ms - dateUTCms) === 86400000)) return;
       if (isRJ && !fromRJList) { cats = cats.filter(c => c !== 'state'); if (!cats.length) return; }
       const dObj = new Date(dateUTCms);
       const key = dObj.getUTCFullYear() + '-' + dObj.getUTCMonth() + '-' + dObj.getUTCDate(); // ONE row per date
@@ -2698,7 +2711,16 @@
     (vratEvents || PCH_VRAT_EVENTS || []).forEach(ev => {
       for (let i = 0; i < HOL_LUNAR_RULES.length; i++) {
         const rule = HOL_LUNAR_RULES[i];
-        if (rule.test(ev) && pchStateAllowed(rule)) addEvent(Date.UTC(ev.dateObj.getUTCFullYear(), ev.dateObj.getUTCMonth(), ev.dateObj.getUTCDate()), rule.name, rule.cats, false, ev.label);
+        if (rule.test(ev) && pchStateAllowed(rule)) {
+          const ms = Date.UTC(ev.dateObj.getUTCFullYear(), ev.dateObj.getUTCMonth(), ev.dateObj.getUTCDate());
+          // The published lists above are authoritative: if one already declares this same holiday on the day
+          // before/after the computed (udaya-tithi) day, don't add a second date for it (e.g. Govardhan Puja 9 vs 10 Nov).
+          const nearListed = !calcMode && [-1, 1].some(off => {
+            const dd = new Date(ms + off * 86400000), m0 = merged[dd.getUTCFullYear() + '-' + dd.getUTCMonth() + '-' + dd.getUTCDate()];
+            return !!m0 && m0.entries.some(e => e.name === rule.name);
+          });
+          if (!nearListed) addEvent(ms, rule.name, rule.cats, false, ev.label);
+        }
       }
     });
 
@@ -2901,7 +2923,7 @@
       s.vrat = ev.label;
     });
     // holiday dateObj = UTC midnight of the local date (same convention)
-    pchBuildPublicHolidays(dim - 1, { y: y, m: m, d: 1 }, vrat).forEach(function (ev) {
+    pchBuildPublicHolidays(dim - 1, { y: y, m: m, d: 1 }, vrat, { calc: true }).forEach(function (ev) {
       const s = slot(ev.dateObj.getUTCDate());
       s.hol.push({ name: ev.name, cats: ev.cats });
       if (ev.cats.has('central') || ev.cats.has('state')) s.govt = true; // central / state govt holiday → red date, like Sunday
