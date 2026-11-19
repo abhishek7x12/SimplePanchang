@@ -1052,8 +1052,29 @@
     // second, redundant network round-trip before the page can show data.)
     if (wasAuto) pchShowGpsLoading(false);
     pchSetStatus('स्थान मिल गया: वर्तमान GPS स्थान (' + PCH.lat.toFixed(3) + ', ' + PCH.lon.toFixed(3) + ')');
+    PCH.state = '';
     pchBusy.show('sun');
     pchRunCalculation();
+    pchResolveGpsState(PCH.lat, PCH.lon);
+  }
+
+  // GPS gives only coordinates, so the state / union territory comes from a free reverse-geocoding
+  // lookup. Runs after the panchang is already shown; when the state arrives the lists (holidays,
+  // location label) re-render for it. Silent on failure — state simply stays blank.
+  async function pchResolveGpsState(lat, lon) {
+    try {
+      const ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      const to = ctl ? setTimeout(function () { ctl.abort(); }, 8000) : null;
+      const res = await fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=' + lat + '&longitude=' + lon + '&localityLanguage=en', { cache: 'no-store', signal: ctl ? ctl.signal : undefined });
+      if (to) clearTimeout(to);
+      const d = await res.json();
+      const st = String((d && d.principalSubdivision) || '').trim();
+      // ignore a stale answer if the location changed meanwhile
+      if (!st || PCH.lat !== lat || PCH.lon !== lon || PCH.name !== 'वर्तमान GPS स्थान' || PCH.state === st) return;
+      PCH.state = st;
+      pchSetStatus('स्थान मिल गया: वर्तमान GPS स्थान, ' + st + ' (' + lat.toFixed(3) + ', ' + lon.toFixed(3) + ')');
+      pchRunCalculation();
+    } catch (e) { /* offline / blocked: leave state blank */ }
   }
 
   function pchHandleGpsError(err, wasAuto) {
@@ -1260,9 +1281,12 @@
     'चैत्र|शुक्ल|2': 'चेटी चंड (सिंधी नववर्ष)',
     'चैत्र|शुक्ल|9': 'राम नवमी',
     'चैत्र|शुक्ल|11': 'कामदा एकादशी',
+    'चैत्र|शुक्ल|13': 'महावीर जयंती',
     'चैत्र|शुक्ल|15': 'हनुमान जयंती (चैत्र पूर्णिमा)',
     'चैत्र|कृष्ण|1': 'होली (धुलंडी / रंगों वाली होली)',
     'चैत्र|कृष्ण|11': 'पापमोचिनी एकादशी',
+    'पौष|कृष्ण|11': 'सफला एकादशी',
+    'पौष|शुक्ल|11': 'पौष पुत्रदा एकादशी',
     'वैशाख|शुक्ल|3': 'अक्षय तृतीया',
     'वैशाख|शुक्ल|11': 'मोहिनी एकादशी',
     'वैशाख|कृष्ण|11': 'वरुथिनी एकादशी',
@@ -1314,8 +1338,117 @@
     'फाल्गुन|शुक्ल|11': 'आमलकी एकादशी',
     'फाल्गुन|शुक्ल|15': 'होलिका दहन (फाल्गुन पूर्णिमा)',
     'फाल्गुन|कृष्ण|11': 'विजया एकादशी',
-    'फाल्गुन|कृष्ण|13': 'महाशिवरात्रि'
+    'फाल्गुन|कृष्ण|14': 'महाशिवरात्रि'
   };
+
+  // ── Extra observances (from the Vrat/Tyohar master list Nov 2026 – Dec 2027) ──
+  // Names that ride along on a masa|paksha|tithi key (same day-picking rule as that key).
+  const PCH_VRAT_EXTRA = {
+    'कार्तिक|कृष्ण|13': ['धन्वंतरि जयंती', 'यम दीपम'],
+    'कार्तिक|कृष्ण|14': ['काली चौदस'],
+    'कार्तिक|कृष्ण|15': ['लक्ष्मी पूजा'],
+    'कार्तिक|शुक्ल|1': ['अन्नकूट', 'बलि प्रतिपदा', 'गुजराती नव वर्ष'],
+    'कार्तिक|शुक्ल|2': ['यम द्वितीया', 'चित्रगुप्त पूजा'],
+    'कार्तिक|शुक्ल|5': ['लाभ पंचमी'],
+    'कार्तिक|शुक्ल|6': ['स्कंद षष्ठी'],
+    'कार्तिक|शुक्ल|8': ['गोपाष्टमी'],
+    'कार्तिक|शुक्ल|9': ['अक्षय नवमी', 'जगद्धात्री पूजा'],
+    'कार्तिक|शुक्ल|11': ['भीष्म पंचक प्रारंभ'],
+    'कार्तिक|शुक्ल|12': ['तुलसी विवाह'],
+    'कार्तिक|शुक्ल|14': ['वैकुंठ चतुर्दशी'],
+    'कार्तिक|शुक्ल|15': ['गुरु नानक जयंती'],
+    'मार्गशीर्ष|कृष्ण|8': ['कालभैरव जयंती'],
+    'मार्गशीर्ष|शुक्ल|5': ['विवाह पंचमी'],
+    'मार्गशीर्ष|शुक्ल|6': ['चंपा षष्ठी', 'स्कंद षष्ठी'],
+    'मार्गशीर्ष|शुक्ल|11': ['गीता जयंती', 'वैकुंठ एकादशी'],
+    'मार्गशीर्ष|शुक्ल|12': ['मत्स्य द्वादशी'],
+    'मार्गशीर्ष|शुक्ल|15': ['दत्तात्रेय जयंती', 'अन्नपूर्णा जयंती'],
+    'पौष|शुक्ल|7': ['गुरु गोबिंद सिंह जयंती'],
+    'पौष|शुक्ल|15': ['शाकंभरी पूर्णिमा'],
+    'माघ|कृष्ण|4': ['सकट चौथ'],
+    'माघ|कृष्ण|15': ['मौनी अमावस्या'],
+    'माघ|शुक्ल|1': ['माघ गुप्त नवरात्रि प्रारंभ'],
+    'माघ|शुक्ल|4': ['गणेश जयंती'],
+    'माघ|शुक्ल|7': ['रथ सप्तमी', 'नर्मदा जयंती'],
+    'माघ|शुक्ल|8': ['भीष्म अष्टमी'],
+    'माघ|शुक्ल|15': ['गुरु रविदास जयंती'],
+    'फाल्गुन|कृष्ण|8': ['जानकी जयंती'],
+    'फाल्गुन|शुक्ल|8': ['अन्नपूर्णा अष्टमी'],
+    'फाल्गुन|शुक्ल|11': ['रंगभरी एकादशी'],
+    'फाल्गुन|शुक्ल|15': ['लक्ष्मी जयंती'],
+    'चैत्र|शुक्ल|1': ['उगादी', 'हिंदू नव वर्ष (विक्रम संवत {SAMVAT})'],
+    'चैत्र|शुक्ल|3': ['गौरी पूजा', 'गणगौर', 'मत्स्य जयंती'],
+    'चैत्र|शुक्ल|8': ['महाअष्टमी (दुर्गा अष्टमी)'],
+    'चैत्र|शुक्ल|9': ['स्वामी नारायण जयंती'],
+    'चैत्र|कृष्ण|7': ['शीतला सप्तमी'],
+    'चैत्र|कृष्ण|8': ['शीतला अष्टमी', 'बसोड़ा'],
+    'वैशाख|शुक्ल|3': ['मातंगी जयंती'],
+    'वैशाख|शुक्ल|5': ['शंकराचार्य जयंती', 'सूरदास जयंती'],
+    'वैशाख|शुक्ल|7': ['गंगा सप्तमी'],
+    'वैशाख|शुक्ल|8': ['बगलामुखी जयंती'],
+    'वैशाख|शुक्ल|9': ['सीता नवमी'],
+    'वैशाख|शुक्ल|15': ['बुद्ध पूर्णिमा', 'कूर्म जयंती'],
+    'ज्येष्ठ|कृष्ण|1': ['नारद जयंती'],
+    'ज्येष्ठ|कृष्ण|15': ['वट सावित्री व्रत', 'शनि जयंती'],
+    'ज्येष्ठ|शुक्ल|15': ['कबीरदास जयंती'],
+    'आषाढ़|शुक्ल|1': ['आषाढ़ गुप्त नवरात्रि प्रारंभ'],
+    'आषाढ़|शुक्ल|11': ['चातुर्मास प्रारंभ'],
+    'आषाढ़|शुक्ल|15': ['व्यास पूजा'],
+    'श्रावण|कृष्ण|15': ['हरियाली अमावस्या'],
+    'श्रावण|शुक्ल|7': ['तुलसीदास जयंती'],
+    'श्रावण|शुक्ल|15': ['गायत्री जयंती'],
+    'भाद्रपद|कृष्ण|4': ['बहुला चौथ'],
+    'भाद्रपद|कृष्ण|15': ['पोला', 'पिठोरी अमावस्या'],
+    'भाद्रपद|शुक्ल|3': ['वराह जयंती'],
+    'भाद्रपद|शुक्ल|5': ['ऋषि पंचमी'],
+    'भाद्रपद|शुक्ल|8': ['राधा अष्टमी', 'महालक्ष्मी व्रत प्रारंभ'],
+    'भाद्रपद|शुक्ल|12': ['वामन जयंती'],
+    'भाद्रपद|शुक्ल|14': ['अनंत चतुर्दशी', 'गणेश विसर्जन'],
+    'आश्विन|कृष्ण|1': ['पितृ पक्ष प्रारंभ (श्राद्ध प्रारंभ)'],
+    'आश्विन|कृष्ण|8': ['जीवित्पुत्रिका व्रत (जितिया)'],
+    'आश्विन|कृष्ण|15': ['सर्व पितृ अमावस्या', 'महालया अमावस्या'],
+    'आश्विन|शुक्ल|1': ['घटस्थापना'],
+    'आश्विन|शुक्ल|5': ['उपांग ललिता व्रत'],
+    'आश्विन|शुक्ल|8': ['सरस्वती पूजा'],
+    'आश्विन|शुक्ल|9': ['शारदीय नवरात्रि पारण'],
+    'आश्विन|शुक्ल|15': ['कोजागरी पूजा', 'वाल्मीकि जयंती']
+  };
+  // Sankashti Chaturthi has a different name in each (purnimanta) month.
+  const PCH_SANKASHTI = {
+    'कार्तिक': 'वक्रतुंड', 'मार्गशीर्ष': 'गणाधिप', 'पौष': 'अखुरथ', 'माघ': 'लंबोदर', 'फाल्गुन': 'द्विजप्रिय', 'चैत्र': 'भालचंद्र',
+    'वैशाख': 'विकट', 'ज्येष्ठ': 'एकदंत', 'आषाढ़': 'कृष्णपिंगल', 'श्रावण': 'गजानन', 'भाद्रपद': 'हेरंब', 'आश्विन': 'विघ्नराज'
+  };
+  // Observances that are judged by a DIFFERENT part of the day than the tithi's own key rule, or that
+  // recur every month: each gets its own day-pick (rule) and merges onto the same date as the others.
+  //   pri: 0 = festival, 1 = named vrat, 2 = monthly minor vrat (decides which name leads a day's list)
+  const PCH_VRAT_SEP = [
+    { id: 'अहोई', test: s => s.masa === 'कार्तिक' && s.pakshaShort === 'कृष्ण' && s.tithiNum === 8, label: 'अहोई अष्टमी', rule: 'pradosh', pri: 0 },
+    { id: 'गोवत्स', test: s => s.masa === 'कार्तिक' && s.pakshaShort === 'कृष्ण' && s.tithiNum === 12, label: 'गोवत्स द्वादशी', rule: 'pradosh', pri: 1 },
+    { id: 'परशुराम', test: s => s.masa === 'वैशाख' && s.pakshaShort === 'शुक्ल' && s.tithiNum === 3, label: 'परशुराम जयंती', rule: 'pradosh', pri: 0 },
+    { id: 'नृसिंह', test: s => s.masa === 'वैशाख' && s.pakshaShort === 'शुक्ल' && s.tithiNum === 14, label: 'नृसिंह जयंती', rule: 'pradosh', pri: 0 },
+    { id: 'कालाष्टमी', test: s => s.pakshaShort === 'कृष्ण' && s.tithiNum === 8, label: 'कालाष्टमी', rule: 'nishita', pri: 2 },
+    { id: 'मासिक-शिवरात्रि', test: s => s.pakshaShort === 'कृष्ण' && s.tithiNum === 14, label: 'मासिक शिवरात्रि', rule: 'nishita', pri: 2 },
+    { id: 'मासिक-दुर्गाष्टमी', test: s => s.pakshaShort === 'शुक्ल' && s.tithiNum === 8, label: 'मासिक दुर्गाष्टमी', rule: 'udaya', pri: 2 }
+  ];
+  const PCH_VRAT_RULE_DYN = {};            // pseudo-key -> rule (filled as SEP entries register)
+  const PCH_PRADOSH_WD = ['रवि', 'सोम', 'भौम', 'बुध', 'गुरु', 'शुक्र', 'शनि'];
+  const PCH_SANKRANTI = [
+    ['मेष', 'मेष संक्रांति, बैसाखी'], ['वृषभ', 'वृषभ संक्रांति'], ['मिथुन', 'मिथुन संक्रांति'], ['कर्क', 'कर्क संक्रांति'],
+    ['सिंह', 'सिंह संक्रांति'], ['कन्या', 'कन्या संक्रांति, विश्वकर्मा पूजा'], ['तुला', 'तुला संक्रांति'], ['वृश्चिक', 'वृश्चिक संक्रांति'],
+    ['धनु', 'धनु संक्रांति'], ['मकर', 'मकर संक्रांति (पोंगल, उत्तरायण, माघ बिहू)'], ['कुम्भ', 'कुंभ संक्रांति'], ['मीन', 'मीन संक्रांति']
+  ];
+  // Fixed civil-date observances (month, day, name)
+  const PCH_FIXED_DAYS = [
+    [1, 12, 'स्वामी विवेकानंद जयंती, राष्ट्रीय युवा दिवस'], [1, 26, 'गणतंत्र दिवस'], [2, 19, 'छत्रपति शिवाजी महाराज जयंती'],
+    [4, 14, 'डॉ. अंबेडकर जयंती'], [8, 15, 'स्वतंत्रता दिवस'], [10, 2, 'गांधी जयंती'], [12, 25, 'क्रिसमस']
+  ];
+  // Eclipses: instant of greatest eclipse (UTC). The civil date shown is that instant in the user's own
+  // time zone. Whether it is visible from a given place is not worked out here.
+  const PCH_ECLIPSES = [
+    ['2027-02-06T16:00:00Z', 'सूर्य ग्रहण (कंकणाकृति)'], ['2027-02-20T22:13:00Z', 'चंद्र ग्रहण (उपच्छाया)'],
+    ['2027-07-18T16:03:00Z', 'चंद्र ग्रहण (उपच्छाया)'], ['2027-08-02T10:07:00Z', 'सूर्य ग्रहण (पूर्ण)'],
+    ['2027-08-17T07:14:00Z', 'चंद्र ग्रहण (उपच्छाया)']
+  ];
 
   // Returns { sun, moon, tithi, masa, pakshaShort, tithiNum } for a given JD
   function pchPanchangSnapshotAt(jd) {
@@ -1327,22 +1460,28 @@
     return { sun, moon, tithi, masa, pakshaShort, tithiNum };
   }
 
+  // Comma-separated names for a masa|paksha|tithi key (festival first, then extras, then the generic
+  // vrat name for that tithi); null when the tithi carries nothing.
   function pchVratLabelFor(masa, pakshaShort, tithiNum) {
     const key = masa + '|' + pakshaShort + '|' + tithiNum;
-    let name = VRAT_TYOHAR_MAP[key];
-    if (name) return name;
-    if (tithiNum === 11) return 'एकादशी (गयारस) व्रत';
-    if (tithiNum === 15 && pakshaShort === 'शुक्ल') return 'पूर्णिमा व्रत';
-    if (tithiNum === 15 && pakshaShort === 'कृष्ण') return 'अमावस्या';
-    if (tithiNum === 13) return 'प्रदोष व्रत';
-    if (tithiNum === 4 && pakshaShort === 'कृष्ण') return 'संकष्टी चतुर्थी व्रत';
-    if (tithiNum === 4 && pakshaShort === 'शुक्ल') return 'विनायक चतुर्थी व्रत';
-    return null;
+    const base = VRAT_TYOHAR_MAP[key];
+    const out = [];
+    if (base) out.push(base);
+    (PCH_VRAT_EXTRA[key] || []).forEach(function (x) { out.push(x); });
+    if (tithiNum === 11 && !base) out.push('एकादशी (गयारस) व्रत');
+    if (tithiNum === 15 && pakshaShort === 'शुक्ल' && !base) out.push(masa + ' पूर्णिमा');
+    if (tithiNum === 15 && pakshaShort === 'कृष्ण' && !base) { out.push(masa + ' अमावस्या'); out.push('दर्श अमावस्या'); }
+    if (tithiNum === 13) out.push('प्रदोष व्रत');                       // weekday name added once the date is known
+    if (tithiNum === 4 && pakshaShort === 'कृष्ण') out.push((PCH_SANKASHTI[masa] ? PCH_SANKASHTI[masa] + ' ' : '') + 'संकष्टी चतुर्थी');
+    if (tithiNum === 4 && pakshaShort === 'शुक्ल') out.push('विनायक चतुर्थी');
+    return out.length ? out.join(', ') : null;
   }
 
   // Scans forward `daysAhead` calendar days (local, using PCH.tzOffsetMin —
   // defaults to IST 330 if location/tz hasn't resolved yet) and returns a
-  // sorted array of upcoming vrat/tyohar events: { dateObj, label, masa, paksha }
+  // sorted array of upcoming vrat/tyohar events: { dateObj, label, masa, paksha, windows }
+  // windows = [{ name, kind, start, end }] – the time window for each label (end null = a single instant)
+  // (dateObj = UTC midnight of the local civil date, like the holiday events)
   // ── Sankranti helpers ──────────────────────────────────────────────────
   // Approximate local sunrise/sunset (minutes after local midnight) for a
   // local calendar date, from PCH.lat/lon. Falls back to 06:00 / 18:00 when
@@ -1409,6 +1548,159 @@
     return { y: dt.getUTCFullYear(), m: dt.getUTCMonth(), d: dt.getUTCDate() };
   }
 
+  /* ── Which part of the day decides the date of each observance ──────────
+     A tithi can span two civil days, so "which day?" depends on the observance:
+       udaya     – tithi at sunrise (most vrats; Ekadashi, Purnima, Navratri …)
+       pradosh   – tithi during Pradosh (sunset → +2h24m): Dhanteras, Choti
+                   Diwali, Diwali (Lakshmi Pujan), Pradosh Vrat
+       nishita   – tithi at midnight: Janmashtami, Mahashivratri
+       moonrise  – tithi at moonrise: Karva Chauth, Sankashti Chaturthi
+       madhyahna – tithi at midday: Ram Navami, Ganesh/Vinayaka Chaturthi,
+                   Akshaya Tritiya
+       aparahna  – tithi in the afternoon: Vijayadashami (Dussehra)
+     Holika Dahan is a Pradosh festival with an extra Bhadra check (see
+     pchHolikaBhadraShift); Holi (Dhulandi) is simply the day after Dahan. */
+  const PCH_VRAT_RULE_BY_KEY = {
+    'कार्तिक|कृष्ण|13': 'pradosh',     // धनतेरस
+    'कार्तिक|कृष्ण|14': 'pradosh',     // नरक चतुर्दशी (छोटी दीपावली)
+    'कार्तिक|कृष्ण|15': 'pradosh',     // दीपावली
+    'फाल्गुन|शुक्ल|15': 'pradosh',     // होलिका दहन (+ भद्रा जाँच)
+    'भाद्रपद|कृष्ण|8': 'nishita',      // जन्माष्टमी
+    'फाल्गुन|कृष्ण|14': 'nishita',     // महाशिवरात्रि
+    'कार्तिक|कृष्ण|4': 'moonrise',     // करवा चौथ
+    'चैत्र|शुक्ल|9': 'madhyahna',      // राम नवमी
+    'वैशाख|शुक्ल|3': 'madhyahna',      // अक्षय तृतीया
+    'भाद्रपद|शुक्ल|4': 'madhyahna',    // गणेश चतुर्थी
+    'आश्विन|शुक्ल|10': 'aparahna'      // विजयादशमी
+  };
+  // If the tithi covers the observance window on two consecutive days, the later
+  // day is taken for these (Diwali family); everything else takes the earlier day.
+  const PCH_VRAT_LATE_TIE = { 'कार्तिक|कृष्ण|13': 1, 'कार्तिक|कृष्ण|14': 1, 'कार्तिक|कृष्ण|15': 1 };
+
+  function pchVratRuleFor(key, pakshaShort, tithiNum) {
+    if (PCH_VRAT_RULE_DYN[key]) return PCH_VRAT_RULE_DYN[key];
+    if (PCH_VRAT_RULE_BY_KEY[key]) return PCH_VRAT_RULE_BY_KEY[key];
+    if (VRAT_TYOHAR_MAP[key]) return 'udaya';                       // named festival without a special rule
+    if (tithiNum === 13) return 'pradosh';                          // generic प्रदोष व्रत
+    if (tithiNum === 4) return pakshaShort === 'कृष्ण' ? 'moonrise' : 'madhyahna';   // संकष्टी / विनायक
+    return 'udaya';
+  }
+
+  // Vishti-karana (Bhadra) runs that overlap [jdFrom, jdTo], as [{ start, end }] (JD).
+  // The scan is widened by 14 h each side (a Vishti karana lasts ≤ ~14 h) so a run that
+  // is already on, or still on, at the edge of the window is returned whole.
+  function pchVishtiRunsBetween(jdFrom, jdTo) {
+    const step = 10 / 1440, a = jdFrom - 14 / 24, b = jdTo + 14 / 24;
+    const isV = function (jd) { return isVishtiKaranaIdx(karanaIndexAt(jd)); };
+    const edge = function (outJD, inJD) {            // bisect the instant the state flips
+      let lo = outJD, hi = inJD;
+      const inState = isV(inJD);
+      for (let i = 0; i < 30; i++) { const mid = (lo + hi) / 2; if (isV(mid) === inState) hi = mid; else lo = mid; }
+      return (lo + hi) / 2;
+    };
+    const runs = [];
+    let prevJD = a, prevV = isV(a), start = prevV ? a : null;
+    for (let jd = a + step; jd <= b + 1e-9; jd += step) {
+      const v = isV(jd);
+      if (v && !prevV) start = edge(prevJD, jd);
+      if (!v && prevV) { runs.push({ start: start, end: edge(jd, prevJD) }); start = null; }
+      prevJD = jd; prevV = v;
+    }
+    return runs.filter(function (r) { return r.end > jdFrom && r.start < jdTo; });
+  }
+
+  // Holika Dahan must not be lit in Bhadra. For the civil day D that has Purnima at
+  // Pradosh, returns 0 if Dahan stays on D, or 1 if it moves to the next evening:
+  //   • no Bhadra during Pradosh                       → D
+  //   • Bhadra over before midnight                    → D (lit after Bhadra ends)
+  //   • Bhadra runs past midnight but its Punchha
+  //     (65–75 % of the Bhadra span) falls between
+  //     sunset and midnight                            → D (lit in Bhadra Punchha)
+  //   • otherwise (Bhadra blocks the whole first night) → next day's Pradosh, even if
+  //     Purnima has just ended by then (e.g. 2023, 2026).
+  // Also returns the Dahan time window { kind, start, end } (JD):
+  //   no Bhadra → Pradosh (caller clips it to Purnima); after Bhadra → Bhadra end to
+  //   midnight (to Pradosh end if Bhadra ends inside Pradosh); Punchha → the Punchha
+  //   span inside sunset–midnight; next evening → that day's Pradosh.
+  function pchHolikaBhadraShift(y, m, D, tz) {
+    const sr = pchApproxSunriseSetMin(y, m, D, tz), sn = pchApproxSunriseSetMin(y, m, D + 1, tz);
+    const jdAt = function (min) { return julianDay(new Date(Date.UTC(y, m, D) + (min - tz) * 60000)); };
+    const pStart = jdAt(sr.set), pEnd = jdAt(sr.set + 144), midnight = jdAt((sr.set + 1440 + sn.rise) / 2);
+    let run = null;
+    pchVishtiRunsBetween(pStart, midnight + 0.2).forEach(function (r) {
+      if (r.end > pStart && r.start < pEnd) run = r;
+    });
+    const KIND = 'दहन मुहूर्त';
+    if (!run) return { shift: 0, plain: true, win: { kind: KIND, start: pStart, end: pEnd } };
+    if (run.end <= midnight) {
+      return { shift: 0, win: { kind: KIND + ' (भद्रा समाप्त होने पर)', start: run.end, end: run.end < pEnd ? pEnd : midnight } };
+    }
+    const len = run.end - run.start;
+    const punchhaStart = run.start + 0.65 * len, punchhaEnd = run.start + 0.75 * len;
+    if (punchhaEnd > pStart && punchhaStart < midnight) {
+      return { shift: 0, win: { kind: KIND + ' (भद्रा पुच्छ)', start: Math.max(punchhaStart, pStart), end: Math.min(punchhaEnd, midnight) } };
+    }
+    const next = pchApproxSunriseSetMin(y, m, D + 1, tz);
+    const jdNext = function (min) { return julianDay(new Date(Date.UTC(y, m, D + 1) + (min - tz) * 60000)); };
+    return { shift: 1, win: { kind: KIND, start: jdNext(next.set), end: jdNext(next.set + 144) } };
+  }
+
+  // Start/end JD of the tithi that is running at jd (30-min walk, then bisection).
+  function pchTithiSpanAround(jd) {
+    const idx = tithiIndexAt(jd), step = 30 / 1440;
+    const edge = function (inJD, outJD) {
+      let lo = inJD, hi = outJD;
+      for (let i = 0; i < 30; i++) { const mid = (lo + hi) / 2; if (tithiIndexAt(mid) === idx) lo = mid; else hi = mid; }
+      return (lo + hi) / 2;
+    };
+    let start = jd - 1, end = jd + 1, a = jd;
+    for (let i = 0; i < 60; i++) { const n = a - step; if (tithiIndexAt(n) !== idx) { start = edge(a, n); break; } a = n; }
+    a = jd;
+    for (let i = 0; i < 60; i++) { const n = a + step; if (tithiIndexAt(n) !== idx) { end = edge(a, n); break; } a = n; }
+    return { start: start, end: end };
+  }
+
+  // The time window that matters for a picked festival, by its rule:
+  //   udaya → the tithi's own span;  pradosh / madhyahna / aparahna → that part of the
+  //   day clipped to the tithi;  nishita → ±24 min around midnight;  moonrise → the
+  //   moonrise instant. Falls back to the tithi span if the window and tithi don't overlap.
+  function pchVratWindowFor(h, y, m, baseDay, tz) {
+    if (h.win) return h.win;
+    if (h.ref === undefined) return null;
+    const rule = pchVratRuleFor(h.key, h.snap.pakshaShort, h.snap.tithiNum);
+    const D = baseDay + h.d;
+    const sr = pchApproxSunriseSetMin(y, m, D, tz), sn = pchApproxSunriseSetMin(y, m, D + 1, tz);
+    const jdAt = function (min) { return julianDay(new Date(Date.UTC(y, m, D) + (min - tz) * 60000)); };
+    const span = pchTithiSpanAround(h.ref), day = sr.set - sr.rise;
+    const clip = function (a, b, kind) {
+      const st = Math.max(a, span.start), en = Math.min(b, span.end);
+      return en > st ? { kind: kind, start: st, end: en } : null;
+    };
+    let w = null;
+    if (rule === 'pradosh') w = clip(jdAt(sr.set), jdAt(sr.set + 144), 'प्रदोष काल');
+    else if (rule === 'madhyahna') w = clip(jdAt(sr.rise + day * 0.4), jdAt(sr.rise + day * 0.6), 'मध्याह्न काल');
+    else if (rule === 'aparahna') w = clip(jdAt(sr.rise + day * 0.6), jdAt(sr.rise + day * 0.8), 'अपराह्न काल');
+    else if (rule === 'nishita') { const mid = (sr.set + 1440 + sn.rise) / 2; w = { kind: 'निशीथ काल', start: jdAt(mid - 24), end: jdAt(mid + 24) }; }
+    else if (rule === 'moonrise') w = { kind: 'चंद्रोदय', start: h.ref, end: null };
+    return w || { kind: 'तिथि', start: span.start, end: span.end };
+  }
+
+  // Moonrise (minutes after local midnight) for a local civil date, or null.
+  function pchMoonriseLocalMin(y, m, d, tz) {
+    if (!PCH || PCH.lat === null || PCH.lon === null) return null;
+    const jdMid = julianDay(new Date(Date.UTC(y, m, d) - tz * 60000));
+    const r = findMoonRiseSet(jdMid, PCH.lat, PCH.lon);
+    return r && r.riseJD ? (r.riseJD - jdMid) * 1440 : null;
+  }
+
+  // Tithi the observance is based on: the snapshot's tithi when we have one, else derived from the
+  // festival key ("masa|paksha|number"), e.g. the derived Holi (Dhulandi) entry.
+  function pchVratTithiName(h) {
+    if (h.snap && h.snap.tithi) return h.snap.tithi.name;
+    const parts = String(h.key).split('|');
+    return TITHI_NAMES[(parts[1] === 'कृष्ण' ? 15 : 0) + (+parts[2]) - 1] || '';
+  }
+
   function pchBuildVratTyoharList(daysAhead, startYMD) { // startYMD (optional): local {y,m,d} to start from instead of today
     const tz = (PCH && PCH.tzOffsetMin) || 330;
     const now = (PCH && PCH.customDateTime) || new Date();
@@ -1419,26 +1711,166 @@
     // that land on the same calendar day get merged into one entry
     // (e.g. "जगन्नाथ रथ यात्रा, कर्क संक्रांति") instead of two list items.
     const byDate = {};
-    const lastSeenDay = {}; // dedupe: same tithi key shouldn't repeat within ~15 days
 
-    for (let d = 0; d <= daysAhead; d++) {
-      // Local ~06:00 (approx. sunrise) instant for this calendar day, as a UTC Date
-      const localMorning = new Date(Date.UTC(y, m, baseDay + d, 6, 0, 0) - tz * 60000);
-      const jd = julianDay(localMorning);
-      const snap = pchPanchangSnapshotAt(jd);
+    // For every civil day, sample the panchang at the moments that matter for each rule
+    // (sunrise/midday, Pradosh, midnight, moonrise, afternoon) using the location's real
+    // sunrise/sunset — not a fixed 06:00 — and score each festival key per day.
+    // Scan 2 days before the range and 1 after it so a tithi straddling the edge is
+    // judged against the same neighbouring days as everywhere else.
+    const hits = {};   // key -> [{ d, score, snap, label }]
+    const register = function (key, label, r, pri, d, snap, rule, weight, jd) {
+      // A key sampled by the wrong rule only registers a faint fallback presence
+      // (used when its own window is skipped entirely by a very short tithi).
+      const w = (r === rule) ? weight : 0.01;
+      const arr = hits[key] || (hits[key] = []);
+      let h = null;
+      for (let i = 0; i < arr.length; i++) if (arr[i].d === d) { h = arr[i]; break; }
+      if (!h) { h = { d: d, score: 0, snap: snap, label: label, key: key, pri: pri }; arr.push(h); }
+      h.score += w;
+      if (h.refW === undefined || w > h.refW) { h.refW = w; h.ref = jd; }   // instant used later to find the tithi span / window
+    };
+    const addHit = function (d, snap, rule, weight, jd) {
+      const key = snap.masa + '|' + snap.pakshaShort + '|' + snap.tithiNum;
+      const label = pchVratLabelFor(snap.masa, snap.pakshaShort, snap.tithiNum);
+      if (label) register(key, label, pchVratRuleFor(key, snap.pakshaShort, snap.tithiNum), undefined, d, snap, rule, weight, jd);
+      PCH_VRAT_SEP.forEach(function (sp) {
+        if (!sp.test(snap)) return;
+        const pk = sp.id + '#' + snap.masa;                 // one cluster per month for the monthly ones
+        PCH_VRAT_RULE_DYN[pk] = sp.rule;
+        register(pk, sp.label, sp.rule, sp.pri, d, snap, rule, weight, jd);
+      });
+    };
+    const nakDays = [];                                      // nakshatra-based observances (Thai Pusam, Onam)
 
-      // Tithi-based vrat/tyohar (e.g. Jagannath Rath Yatra, Ekadashi, Purnima…)
-      const tithiLabel = pchVratLabelFor(snap.masa, snap.pakshaShort, snap.tithiNum);
-      if (tithiLabel) {
-        const key = snap.masa + '|' + snap.pakshaShort + '|' + snap.tithiNum;
-        if (lastSeenDay[key] === undefined || (d - lastSeenDay[key]) > 15) {
-          lastSeenDay[key] = d;
-          const dateKey = localMorning.getUTCFullYear() + '-' + localMorning.getUTCMonth() + '-' + localMorning.getUTCDate();
-          byDate[dateKey] = byDate[dateKey] || { dateObj: localMorning, labels: [], masa: snap.masa, paksha: snap.pakshaShort };
-          byDate[dateKey].labels.push(tithiLabel);
+    for (let d = -2; d <= daysAhead + 8; d++) {
+      const D = baseDay + d;
+      const sr = pchApproxSunriseSetMin(y, m, D, tz);
+      const sn = pchApproxSunriseSetMin(y, m, D + 1, tz);
+      const span = sr.set - sr.rise;
+      const sample = function (rule, mins, weight) {
+        mins.forEach(function (min) {
+          const jd = julianDay(new Date(Date.UTC(y, m, D) + (min - tz) * 60000));
+          addHit(d, pchPanchangSnapshotAt(jd), rule, weight, jd);
+        });
+      };
+
+      // udaya: sunrise counts fully, midday half (rescues a tithi that never touches a sunrise)
+      sample('udaya', [sr.rise], 1);
+      sample('udaya', [sr.rise + span * 0.5], 0.5);
+      // nakshatra at sunrise: Thai Pusam (Pushya, Sun in Makara, near Purnima) and Onam (Shravana, Sun in Simha, Bhadrapada Shukla)
+      if (d >= 0 && d <= daysAhead) {
+        const jdSr = julianDay(new Date(Date.UTC(y, m, D) + (sr.rise - tz) * 60000));
+        const nk = nakshatraIndexAt(jdSr);
+        if (nk === 7 || nk === 21) {
+          const ri = suryaRashiIndexAt(jdSr), sn0 = pchPanchangSnapshotAt(jdSr), ti = tithiIndexAt(jdSr);
+          if (nk === 7 && ri === 9 && ti >= 11 && ti <= 17) nakDays.push({ d: d, label: 'थाई पूसम', snap: sn0 });
+          if (nk === 21 && ri === 4 && sn0.masa === 'भाद्रपद' && sn0.pakshaShort === 'शुक्ल') nakDays.push({ d: d, label: 'ओणम (थिरुवोणम)', snap: sn0 });
         }
       }
+      // madhyahna / aparahna: 40–60% / 60–80% of the daylight
+      sample('madhyahna', [sr.rise + span * 0.4, sr.rise + span * 0.5, sr.rise + span * 0.6], 1);
+      sample('aparahna', [sr.rise + span * 0.6, sr.rise + span * 0.7, sr.rise + span * 0.8], 1);
+      // pradosh: from sunset for 2h24m
+      sample('pradosh', [sr.set + 1, sr.set + 36, sr.set + 72, sr.set + 108, sr.set + 143], 1);
+      // nishita: around the middle of the night
+      const mid = (sr.set + 1440 + sn.rise) / 2;
+      sample('nishita', [mid - 24, mid, mid + 24], 1);
+      // moonrise: only worth locating when Krishna Chaturthi is possible that evening
+      const ti = function (min) { return tithiIndexAt(julianDay(new Date(Date.UTC(y, m, D) + (min - tz) * 60000))); };
+      if (ti(sr.set) === 18 || ti(sr.set + 300) === 18) {
+        const mr = pchMoonriseLocalMin(y, m, D, tz);
+        sample('moonrise', [mr !== null ? mr + 1 : sr.set + 150], 1);
+      }
     }
+
+    // One date per occurrence: group consecutive days of the same key, keep the best-scoring day.
+    const picked = [];
+    const HOLIKA_KEY = 'फाल्गुन|शुक्ल|15', HOLI_KEY = 'चैत्र|कृष्ण|1';
+    const holikaDays = [];                       // every Holika Dahan in range (a long range spans two years)
+    delete hits[HOLI_KEY];                       // Holi is derived from Dahan below, not from its own tithi
+    Object.keys(hits).forEach(function (key) {
+      const arr = hits[key].sort(function (a, b) { return a.d - b.d; });
+      const lateTie = !!PCH_VRAT_LATE_TIE[key];
+      let cluster = [];
+      const flush = function () {
+        if (!cluster.length) return;
+        let best = cluster[0];
+        cluster.forEach(function (h) {
+          if (h.score > best.score + 1e-9 || (lateTie && Math.abs(h.score - best.score) <= 1e-9 && h.d > best.d)) best = h;
+        });
+        if (key === HOLIKA_KEY && best.score >= 1) {       // Purnima really is at Pradosh → run the Bhadra check
+          const info = pchHolikaBhadraShift(y, m, baseDay + best.d, tz);
+          const win = { kind: info.win.kind, start: info.win.start, end: info.win.end };
+          if (info.plain) {                                // no Bhadra: Dahan only while Purnima lasts
+            const sp = pchTithiSpanAround(best.ref);
+            win.start = Math.max(win.start, sp.start); win.end = Math.min(win.end, sp.end);
+          }
+          best = { d: best.d + info.shift, score: best.score, snap: best.snap, label: best.label, key: best.key, ref: best.ref, win: win };
+        }
+        if (key === HOLIKA_KEY) holikaDays.push(best.d);
+        const pushIf = function (o) { if (o.d >= 0 && o.d <= daysAhead) picked.push(o); };
+        const snapOnDay = function (dd) {
+          const sr = pchApproxSunriseSetMin(y, m, baseDay + dd, tz);
+          return pchPanchangSnapshotAt(julianDay(new Date(Date.UTC(y, m, baseDay + dd) + (sr.rise - tz) * 60000)));
+        };
+        const dowOf = function (dd) { return new Date(Date.UTC(y, m, baseDay + dd)).getUTCDay(); };
+        if (best.score >= 0.5) {
+          // Varalakshmi Vratam: the Friday on/before Shravana Purnima
+          if (key === 'श्रावण|शुक्ल|15') { const dd = best.d - ((dowOf(best.d) - 5 + 7) % 7); pushIf({ d: dd, score: 1, key: key + '@वरलक्ष्मी', label: 'वरलक्ष्मी व्रत', snap: snapOnDay(dd), pri: 0 }); }
+          // Vaishnava Janmashtami: the day on which Ashtami also holds at sunrise (Udaya Ashtami)
+          if (key === 'भाद्रपद|कृष्ण|8') {
+            const srN = pchApproxSunriseSetMin(y, m, baseDay + best.d + 1, tz);
+            const jdN = julianDay(new Date(Date.UTC(y, m, baseDay + best.d + 1) + (srN.rise - tz) * 60000));
+            if (tithiIndexAt(jdN) === 22) { const dd = best.d + 1; pushIf({ d: dd, score: 1, key: key + '@वैष्णव', label: 'वैष्णव श्री कृष्ण जन्माष्टमी', snap: snapOnDay(dd), pri: 0 }); }
+          }
+          // Dahi Handi: the day after Janmashtami
+          if (key === 'भाद्रपद|कृष्ण|8') { const dd = best.d + 1; pushIf({ d: dd, score: 1, key: key + '@दही-हांडी', label: 'दही हांडी', snap: snapOnDay(dd), pri: 1 }); }
+          // Vaishnava Ekadashi (separate next-day entry) intentionally NOT shown: each Ekadashi appears once, on the
+          // Smarta/udaya day. (Vaishnava Janmashtami above is kept.)
+        }
+        pushIf(best);
+        cluster = [];
+      };
+      arr.forEach(function (h) {
+        if (cluster.length && h.d - cluster[cluster.length - 1].d > 2) flush();
+        cluster.push(h);
+      });
+      flush();
+    });
+    nakDays.forEach(function (n) { picked.push({ d: n.d, score: 1, key: 'नक्षत्र@' + n.label, label: n.label, snap: n.snap, pri: 0 }); });
+    // Holi (Dhulandi / रंगों वाली होली) is the day after Holika Dahan
+    holikaDays.forEach(function (hd) {
+      if (hd + 1 >= 0 && hd + 1 <= daysAhead) {
+        picked.push({ d: hd + 1, score: 1, key: HOLI_KEY, label: VRAT_TYOHAR_MAP[HOLI_KEY], snap: { masa: 'चैत्र', pakshaShort: 'कृष्ण' } });
+      }
+    });
+    picked.sort(function (a, b) { return a.d - b.d || (a.key < b.key ? -1 : 1); });
+    picked.forEach(function (h) {
+      // dateObj = UTC midnight of the LOCAL civil date, so getUTCDate()/getUTCMonth()/getUTCDay()
+      // read the right day for any time zone (the old "local 06:00 instant" named the wrong
+      // day for zones ahead of UTC+6 / behind UTC-18, e.g. Singapore).
+      const civil = new Date(Date.UTC(y, m, baseDay + h.d));
+      const dateKey = civil.getUTCFullYear() + '-' + civil.getUTCMonth() + '-' + civil.getUTCDate();
+      byDate[dateKey] = byDate[dateKey] || { dateObj: civil, labels: [], pris: [], windows: [], masa: h.snap.masa, paksha: h.snap.pakshaShort, tithi: pchVratTithiName(h) };
+      // final text: weekday-named Pradosh, Somvati Amavasya, Vikram Samvat year
+      const dow = civil.getUTCDay();
+      let text = h.label.replace('{SAMVAT}', String(civil.getUTCFullYear() + 57));
+      text = text.replace(/(^|, )प्रदोष व्रत/, '$1' + PCH_PRADOSH_WD[dow] + ' प्रदोष व्रत');
+      const plainKey = String(h.key).indexOf('#') < 0 && String(h.key).indexOf('@') < 0;
+      if (plainKey && h.snap && h.snap.pakshaShort === 'कृष्ण' && h.snap.tithiNum === 15 && dow === 1) text += ', सोमवती अमावस्या';
+      // lead name: festivals (0) first, then named vrats (1), then monthly minor vrats (2)
+      const tn = h.snap && h.snap.tithiNum;
+      const pri = h.pri !== undefined ? h.pri
+        : ((VRAT_TYOHAR_MAP[h.key] || PCH_VRAT_EXTRA[h.key]) && tn !== 11 ? 0 : ((tn === 11 || tn === 15 || tn === 4) ? 1 : 2));
+      if (byDate[dateKey].leadPri === undefined || pri < byDate[dateKey].leadPri) {
+        byDate[dateKey].leadPri = pri;
+        byDate[dateKey].masa = h.snap.masa; byDate[dateKey].paksha = h.snap.pakshaShort; byDate[dateKey].tithi = pchVratTithiName(h);
+      }
+      byDate[dateKey].labels.push(text);
+      byDate[dateKey].pris.push(pri);
+      const w = pchVratWindowFor(h, y, m, baseDay, tz);
+      if (w) byDate[dateKey].windows.push({ name: text.split(', ')[0], kind: w.kind, start: toDate(w.start), end: w.end ? toDate(w.end) : null });
+    });
 
     // Solar Sankranti — Sun entering sidereal मकर or कर्क rashi. Found via
     // precise bisection of the exact crossing instant (rather than a fixed
@@ -1448,29 +1880,104 @@
     // next day; कर्क before sunrise -> previous day).
     const jdRangeStart = julianDay(new Date(Date.UTC(y, m, baseDay, 6, 0, 0) - tz * 60000)) - 1;
     const jdRangeEnd = jdRangeStart + daysAhead + 2;
-    [{ rashi: 'मकर', label: 'मकर संक्रांति (पोंगल, उत्तरायण प्रारंभ)' }, { rashi: 'कर्क', label: 'कर्क संक्रांति' }].forEach(function (entry) {
-      const seenYears = {};
-      pchSankrantiCrossings(entry.rashi, jdRangeStart, jdRangeEnd).forEach(function (hi) {
+    const rangeStartUTC = Date.UTC(y, m, baseDay);
+    const inRange = function (utcMidnight) { const n = Math.round((utcMidnight - rangeStartUTC) / 86400000); return n >= 0 && n <= daysAhead; };
+    const entryFor = function (civil) {              // civil = UTC midnight of the local date
+      const dk = civil.getUTCFullYear() + '-' + civil.getUTCMonth() + '-' + civil.getUTCDate();
+      if (!byDate[dk]) {
+        const sr = pchApproxSunriseSetMin(civil.getUTCFullYear(), civil.getUTCMonth(), civil.getUTCDate(), tz);
+        const sn = pchPanchangSnapshotAt(julianDay(new Date(civil.getTime() + (sr.rise - tz) * 60000)));
+        byDate[dk] = { dateObj: civil, labels: [], pris: [], windows: [], masa: sn.masa, paksha: sn.pakshaShort, tithi: sn.tithi.name };
+      }
+      return byDate[dk];
+    };
+    PCH_SANKRANTI.forEach(function (entry) {
+      const rashi = entry[0], label = entry[1];
+      const spri = (rashi === 'मकर' || rashi === 'मेष') ? -1 : 1;
+      const seen = {};
+      pchSankrantiCrossings(rashi, jdRangeStart, jdRangeEnd).forEach(function (hi) {
         const crossLocal = new Date(toDate(hi).getTime() + tz * 60000);
         const yr = crossLocal.getUTCFullYear();
-        if (seenYears[yr] === undefined) {
-          seenYears[yr] = true;
-          const obs = pchSankrantiObservedDay(hi, entry.rashi, tz); // sunrise/sunset rule, see helper
-          const dateOnly = new Date(Date.UTC(obs.y, obs.m, obs.d, 6, 0, 0) - tz * 60000);
-          const dateKey = dateOnly.getUTCFullYear() + '-' + dateOnly.getUTCMonth() + '-' + dateOnly.getUTCDate();
-          const snapAtDate = pchPanchangSnapshotAt(julianDay(dateOnly));
-          byDate[dateKey] = byDate[dateKey] || { dateObj: dateOnly, labels: [], masa: snapAtDate.masa, paksha: snapAtDate.pakshaShort };
-          byDate[dateKey].labels.push(entry.label);
+        if (seen[yr]) return;
+        seen[yr] = true;
+        const obs = pchSankrantiObservedDay(hi, rashi, tz);   // मकर after sunset -> next day; कर्क before sunrise -> previous day
+        const dateOnly = new Date(Date.UTC(obs.y, obs.m, obs.d));
+        if (!inRange(dateOnly.getTime())) return;
+        const e = entryFor(dateOnly);
+        e.labels.push(label); e.pris.push(spri);
+        e.windows.push({ name: label.split(', ')[0].replace(/\s*\(.*$/, ''), kind: 'संक्रमण', start: toDate(hi), end: null });
+        if (rashi === 'मकर') {                                 // Lohri / Bhogi Pongal the day before, Mattu Pongal the day after
+          [[-1, 'लोहड़ी, भोगी पोंगल'], [1, 'मट्टू पोंगल']].forEach(function (dv) {
+            const c = new Date(Date.UTC(obs.y, obs.m, obs.d + dv[0]));
+            if (!inRange(c.getTime())) return;
+            const e2 = entryFor(c); e2.labels.push(dv[1]); e2.pris.push(0);
+          });
         }
       });
+    });
+    // Fixed civil-date observances
+    for (let d = 0; d <= daysAhead; d++) {
+      const c = new Date(Date.UTC(y, m, baseDay + d));
+      PCH_FIXED_DAYS.forEach(function (f) {
+        if (c.getUTCMonth() + 1 === f[0] && c.getUTCDate() === f[1]) { const e = entryFor(c); e.labels.push(f[2]); e.pris.push(0); }
+      });
+    }
+    // Eclipses — civil date of the greatest-eclipse instant in the user's own time zone
+    PCH_ECLIPSES.forEach(function (ec) {
+      const t = new Date(ec[0]);
+      const l = new Date(t.getTime() + tz * 60000);
+      const c = new Date(Date.UTC(l.getUTCFullYear(), l.getUTCMonth(), l.getUTCDate()));
+      if (!inRange(c.getTime())) return;
+      const e = entryFor(c);
+      e.labels.push(ec[1]); e.pris.push(1);
+      e.windows.push({ name: ec[1].replace(/\s*\(.*$/, ''), kind: 'ग्रहण मध्य', start: t, end: null });
     });
 
     const events = Object.keys(byDate).map(function (k) {
       const e = byDate[k];
-      return { dateObj: e.dateObj, label: e.labels.join(', '), masa: e.masa, paksha: e.paksha };
+      const order = e.labels.map(function (t, i) { return i; }).sort(function (a, b) { return (e.pris[a] - e.pris[b]) || (a - b); });
+      return { dateObj: e.dateObj, label: order.map(function (i) { return e.labels[i]; }).join(', '), masa: e.masa, paksha: e.paksha, tithi: e.tithi, windows: e.windows };
     });
     events.sort((a, b) => a.dateObj - b.dateObj);
     return events;
+  }
+
+  // "प्रदोष काल: 5:42 PM – 8:06 PM" lines for an event; endpoints on another civil day get a date prefix.
+  function pchVratWinHTML(ev) {
+    const wins = (ev.windows || []).filter(Boolean);
+    if (!wins.length) return '';
+    const tz = (PCH && PCH.tzOffsetMin) || 330, civil = ev.dateObj;
+    const loc = function (date) { return new Date(date.getTime() + tz * 60000); };
+    const sameDay = function (a, b) { return a.getUTCDate() === b.getUTCDate() && a.getUTCMonth() === b.getUTCMonth(); };
+    const hm = function (l) { const h = l.getUTCHours(); return ((h % 12) || 12) + ':' + pad2(l.getUTCMinutes()) + (h >= 12 ? ' PM' : ' AM'); };
+    const dm = function (l) { return l.getUTCDate() + ' ' + MONTH_NAMES_HI[l.getUTCMonth()].slice(0, 3) + ' '; };
+    // start gets a date only if it is not on the festival's own day; end only if it is not on the start's day
+    const text = function (w) {
+      const a = loc(w.start);
+      let t = (sameDay(a, civil) ? '' : dm(a)) + hm(a);
+      if (w.end) { const b = loc(w.end); t += ' – ' + (sameDay(b, a) ? '' : dm(b)) + hm(b); }
+      return t;
+    };
+    return wins.map(function (w) {
+      const who = wins.length > 1 ? w.name.replace(/\s*\([^)]*\)/g, '') + ' · ' : '';
+      return '<div class="vrat-win"><span class="vrat-win-ico" aria-hidden="true">⏱</span><span>' + who + w.kind + ': ' + text(w) + '</span></div>';
+    }).join('');
+  }
+
+  // Tag for a Vrat/Tyohar or holiday item:
+  //   "अभी" – the viewed instant (selected date/time, else live now) lies inside one of the event's time windows
+  //           (e.g. प्रदोष काल, निशीथ काल, दहन मुहूर्त);
+  //   "आज"  – the event is on the viewed civil date but its window has not started / has ended, or it has no
+  //           window (all-day holidays, single-instant events such as Sankranti or moonrise).
+  // ev.dateObj = UTC midnight of the event's local civil date.
+  function pchEvTag(ev) {
+    const tz = (PCH && PCH.tzOffsetMin) || 330;
+    const now = (PCH && PCH.customDateTime) ? PCH.customDateTime : new Date();
+    const l = new Date(now.getTime() + tz * 60000);
+    const d = ev.dateObj;
+    if (d.getUTCFullYear() !== l.getUTCFullYear() || d.getUTCMonth() !== l.getUTCMonth() || d.getUTCDate() !== l.getUTCDate()) return '';
+    const live = (ev.windows || []).some(function (w) { return w && w.end && now >= w.start && now < w.end; });
+    return '<span class="pch-muhurt-nowtag">' + (live ? 'अभी' : 'आज') + '</span>';
   }
 
   function pchVratItemHTML(ev) {
@@ -1480,8 +1987,8 @@
     const weekday = WEEKDAY_NAMES[d.getUTCDay()];
     return '<div class="vrat-item">'
       + '<div class="vrat-date-badge"><span class="vrat-date-num">' + dayNum + '</span><span class="vrat-date-mon">' + monthShort + '</span></div>'
-      + '<div class="vrat-info"><div class="vrat-name">' + ev.label + '</div>'
-      + '<div class="vrat-sub">' + weekday + ' · ' + ev.masa + ' ' + ev.paksha + ' पक्ष</div></div>'
+      + '<div class="vrat-info"><div class="vrat-name">' + ev.label + pchEvTag(ev) + '</div>'
+      + '<div class="vrat-sub">' + weekday + ' · ' + ev.masa + ' ' + ev.paksha + ' पक्ष' + (ev.tithi ? ' · ' + ev.tithi : '') + '</div>' + pchVratWinHTML(ev) + '</div>'
       + '</div>';
   }
 
@@ -1490,10 +1997,12 @@
   // HOL_* tables further down (India Post, Islamic, state festivals) reach —
   // add the next year's rows to those tables BEFORE moving this date, or the
   // later part of the list will silently be missing those holidays.
-  const PCH_VRAT_END_UTC = Date.UTC(2027, 2, 31); // 31 March 2027
+  // Calendar / Vrat-Tyohar / Public-Holiday lists always cover a rolling window:
+  // the current month + the next two months (last day of month+2 is the end).
+  function pchWindowEndUTC(y, m) { return Date.UTC(y, m + 3, 0); }
   function pchVratDaysAhead(localNow) {
     const todayUtc = Date.UTC(localNow.getUTCFullYear(), localNow.getUTCMonth(), localNow.getUTCDate());
-    const endUtc = todayUtc <= PCH_VRAT_END_UTC ? PCH_VRAT_END_UTC : Date.UTC(localNow.getUTCFullYear(), 11, 31);
+    const endUtc = pchWindowEndUTC(localNow.getUTCFullYear(), localNow.getUTCMonth());
     return Math.max(1, Math.round((endUtc - todayUtc) / 86400000));
   }
 
@@ -1514,25 +2023,57 @@
       : '<div style="padding:10px 2px; color:var(--ink-soft); font-size:13px;">कोई आगामी व्रत-त्योहार नहीं मिला।</div>';
   };
 
-  function pchRenderVratTyoharFull() {
+  // Full list shows ONE calendar month at a time (1st .. last day), starting with the
+  // current month. Navigation bounds are the same as the calendar's.
+  const pchVratMon = { y: 0, m: 0, swipeBound: false };
+
+  function pchVratMonthEvents(y, m) {
+    const dim = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+    const prev = new Date(Date.UTC(y, m, 0));   // start one day early, same as the calendar's builder
+    return pchBuildVratTyoharList(dim + 1, { y: prev.getUTCFullYear(), m: prev.getUTCMonth(), d: prev.getUTCDate() })
+      .filter(function (ev) { return ev.dateObj.getUTCFullYear() === y && ev.dateObj.getUTCMonth() === m; });
+  }
+
+  function pchRenderVratTyoharFull(dir) {
     const listEl = document.getElementById('vrat-full-list');
     if (!listEl) return;
-    // Re-derive full remainder-of-year list (not just the 3 shown on Panchang)
-    const tz = (PCH && PCH.tzOffsetMin) || 330;
-    const nowBase = (PCH && PCH.customDateTime) ? PCH.customDateTime.getTime() : Date.now();
-    const localNow = new Date(nowBase + tz * 60000);
-    const events = pchBuildVratTyoharList(pchVratDaysAhead(localNow));
-    let html = '';
-    let curMonthLabel = null;
-    events.forEach(ev => {
-      const monthLabel = MONTH_NAMES_HI[ev.dateObj.getUTCMonth()] + ' ' + ev.dateObj.getUTCFullYear();
-      if (monthLabel !== curMonthLabel) {
-        curMonthLabel = monthLabel;
-        html += '<div class="vrat-month-heading">' + monthLabel + '</div>';
-      }
-      html += pchVratItemHTML(ev);
-    });
-    listEl.innerHTML = html || '<div style="padding:10px 2px; color:var(--ink-soft); font-size:13px;">इस वर्ष हेतु कोई शेष व्रत-त्योहार नहीं मिला।</div>';
+    const y = pchVratMon.y, m = pchVratMon.m;
+    const events = pchVratMonthEvents(y, m);
+    const titleEl = document.getElementById('vrat-month-title');
+    if (titleEl) titleEl.textContent = MONTH_NAMES_HI[m] + ' ' + y;
+    const prevB = document.getElementById('vrat-month-prev'), nextB = document.getElementById('vrat-month-next');
+    if (prevB) prevB.disabled = Date.UTC(y, m, 1) <= pchCalMinUTC();
+    if (nextB) nextB.disabled = Date.UTC(y, m + 1, 1) > pchCalMaxUTC();
+    listEl.innerHTML = events.length
+      ? events.map(pchVratItemHTML).join('')
+      : '<div style="padding:10px 2px; color:var(--ink-soft); font-size:13px;">इस माह कोई व्रत-त्योहार नहीं मिला।</div>';
+    if (dir) {
+      listEl.classList.remove('pch-cal-in-next', 'pch-cal-in-prev');
+      void listEl.offsetWidth;
+      listEl.classList.add(dir > 0 ? 'pch-cal-in-next' : 'pch-cal-in-prev');
+    }
+  }
+
+  window.pchVratNav = function (dir) {
+    let y = pchVratMon.y, m = pchVratMon.m + dir;
+    if (m < 0) { m = 11; y--; } else if (m > 11) { m = 0; y++; }
+    if (Date.UTC(y, m + 1, 0) < pchCalMinUTC() || Date.UTC(y, m, 1) > pchCalMaxUTC()) return;
+    pchVratMon.y = y; pchVratMon.m = m;
+    pchRenderVratTyoharFull(dir);
+  };
+
+  // Swipe left → next month, right → previous (same gesture rules as the calendar).
+  function pchVratBindSwipe() {
+    if (pchVratMon.swipeBound) return;
+    const el = document.getElementById('page-vrattyohar');
+    if (!el) return;
+    pchVratMon.swipeBound = true;
+    let sx = 0, sy = 0, st = 0;
+    el.addEventListener('touchstart', function (e) { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; st = Date.now(); }, { passive: true });
+    el.addEventListener('touchend', function (e) {
+      const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && Date.now() - st < 700) window.pchVratNav(dx < 0 ? 1 : -1);
+    }, { passive: true });
   }
 
   const HOL_STATE_CODE_MAP = {
@@ -1545,6 +2086,7 @@
     'tripura': 'TR', 'uttar pradesh': 'UP', 'uttarakhand': 'UK', 'west bengal': 'WB',
     'andaman and nicobar islands': 'AN', 'chandigarh': 'CH',
     'dadra and nagar haveli and daman and diu': 'DN', 'delhi': 'DL', 'nct of delhi': 'DL',
+    'national capital territory of delhi': 'DL', 'nct': 'DL', 'andaman & nicobar islands': 'AN', 'andaman and nicobar': 'AN', 'dadra and nagar haveli': 'DN', 'daman and diu': 'DN', 'jammu & kashmir': 'JK', 'uttaranchal': 'UK',
     'jammu and kashmir': 'JK', 'ladakh': 'LA', 'lakshadweep': 'LD', 'puducherry': 'PY'
   };
   function pchStateCode(stateName) {
@@ -1554,6 +2096,9 @@
   }
 
   window.showVratTyoharFull = function showVratTyoharFull() {
+    const t = pchCalToday();
+    pchVratMon.y = t.y; pchVratMon.m = t.m;     // always open on the current month
+    pchVratBindSwipe();
     pchRenderVratTyoharFull();
     showSecondaryPage('page-vrattyohar');
   };
@@ -1595,24 +2140,37 @@
   // holidays, and were previously missing from every category except
   // 'post' — corrected here.
   const HOL_ISLAMIC_2026 = [
-    { y: 2026, m: 3,  d: 21, name: 'ईद-उल-फितर', cats: ['central', 'state', 'bank', 'cbse', 'edu', 'hc', 'cc'] },
-    { y: 2026, m: 5,  d: 27, name: 'ईद-उल-जुहा (बकरीद)', cats: ['central', 'state', 'bank', 'cbse', 'edu', 'hc', 'cc'] },
-    { y: 2026, m: 6,  d: 26, name: 'मुहर्रम', cats: ['central', 'state', 'bank'] },
-    { y: 2026, m: 8,  d: 26, name: 'ईद-ए-मिलाद (पैगंबर मोहम्मद जन्मदिवस)', cats: ['central', 'state', 'bank'] }
+    { y: 2026, m: 3,  d: 21, name: 'ईद-उल-फितर', cats: ['state'] },
+    { y: 2026, m: 5,  d: 27, name: 'ईद-उल-जुहा (बकरीद)', cats: ['state'] },
+    { y: 2026, m: 6,  d: 26, name: 'मुहर्रम', cats: ['state'] },
+    { y: 2026, m: 8,  d: 26, name: 'ईद-ए-मिलाद (पैगंबर मोहम्मद जन्मदिवस)', cats: ['state'] }
   ];
 
-  // 2027 (Jan–Mar window) — dates per DoPT holiday list for 2027 (OM dated
+  // 2027 — dates per DoPT holiday list for 2027 (OM dated
   // 16.07.2026). India Post follows the 14 compulsory central holidays.
   // Eid-ul-Fitr depends on moon sighting and may shift by a day.
+  // Extended to the full year 2027 (DoPT central-government holiday list for 2027). The
+  // moon-sighting holidays (Islamic list below) may shift by a day.
   const HOL_INDIAPOST_2027 = [
     { y: 2027, m: 1,  d: 26, name: 'गणतंत्र दिवस' },
-    { y: 2027, m: 3,  d: 26, name: 'गुड फ्राइडे' }
+    { y: 2027, m: 3,  d: 26, name: 'गुड फ्राइडे' },
+    { y: 2027, m: 4,  d: 19, name: 'महावीर जयंती' },
+    { y: 2027, m: 5,  d: 20, name: 'बुद्ध पूर्णिमा' },
+    { y: 2027, m: 8,  d: 15, name: 'स्वतंत्रता दिवस' },
+    { y: 2027, m: 10, d: 2,  name: 'गांधी जयंती' },
+    { y: 2027, m: 10, d: 10, name: 'दशहरा (विजयादशमी)' },
+    { y: 2027, m: 10, d: 29, name: 'दीपावली' },
+    { y: 2027, m: 11, d: 14, name: 'गुरु नानक जयंती' },
+    { y: 2027, m: 12, d: 25, name: 'क्रिसमस' }
   ];
   const HOL_ISLAMIC_2027 = [
-    { y: 2027, m: 3, d: 10, name: 'ईद-उल-फितर', cats: ['central', 'state', 'bank', 'cbse', 'edu', 'hc', 'cc'] }
+    { y: 2027, m: 3, d: 10, name: 'ईद-उल-फितर', cats: ['state'] },
+    { y: 2027, m: 5, d: 17, name: 'ईद-उल-जुहा (बकरीद)', cats: ['state'] },
+    { y: 2027, m: 6, d: 15, name: 'मुहर्रम', cats: ['state'] },
+    { y: 2027, m: 8, d: 15, name: 'ईद-ए-मिलाद (पैगंबर मोहम्मद जन्मदिवस)', cats: ['state'] }
   ];
 
-  const HOL_CAT_LABEL = { central: 'केंद्र सरकार', state: 'राज्य सरकार', bank: 'बैंक', post: 'भारतीय डाक', cbse: 'CBSE', edu: 'राज्य शिक्षा बोर्ड', hc: 'उच्च न्यायालय', cc: 'जिला/सिविल न्यायालय' };
+  const HOL_CAT_LABEL = { central: 'केंद्र सरकार', state: 'राज्य सरकार', bank: 'बैंक', post: 'भारतीय डाक', cbse: 'CBSE Schools', edu: 'RBSE Schools', hc: 'उच्च न्यायालय', cc: 'जिला न्यायालय' };
   const HOL_CAT_ORDER = ['central', 'state', 'bank', 'post', 'cbse', 'edu', 'hc', 'cc'];
 
   // Fixed (solar-calendar) dates — reliable every year
@@ -1637,18 +2195,14 @@
     { m: 1, d: 14, solar: 'मकर', name: 'मकर संक्रांति', cats: ['state', 'bank'], states: ['GJ', 'MH', 'KA', 'AP', 'TG', 'WB', 'OD', 'MP', 'CG'] },
     { m: 1, d: 14, solar: 'मकर', name: 'पोंगल', cats: ['state', 'bank'], states: ['TN'] },
     { m: 1, d: 14, name: 'माघ बिहू', cats: ['state', 'bank'], states: ['AS'] },
-    { m: 1, d: 26, name: 'गणतंत्र दिवस', cats: ['central', 'state', 'bank', 'cbse', 'edu', 'hc', 'cc'] },
+    { m: 1, d: 26, name: 'गणतंत्र दिवस', cats: ['state'] },
     { m: 2, d: 19, name: 'छत्रपति शिवाजी महाराज जयंती', cats: ['state', 'bank'], states: ['MH'] },
     { m: 4, d: 13, name: 'बैसाखी', cats: ['state', 'bank'], states: ['PB', 'HR', 'CH'] },
-    { m: 4, d: 14, name: 'डॉ. भीमराव अम्बेडकर जयंती', cats: ['central', 'state', 'bank'] },
-    { m: 5, d: 1,  name: 'श्रमिक दिवस', cats: ['bank'] },
+    { m: 4, d: 14, name: 'डॉ. भीमराव अम्बेडकर जयंती', cats: ['state'] },
     { m: 5, d: 1,  name: 'महाराष्ट्र दिवस', cats: ['state', 'bank'], states: ['MH'] },
-    { m: 8, d: 15, name: 'स्वतंत्रता दिवस', cats: ['central', 'state', 'bank', 'cbse', 'edu', 'hc', 'cc'] },
-    { m: 10, d: 2, name: 'गांधी जयंती', cats: ['central', 'state', 'bank', 'cbse', 'edu', 'hc', 'cc'] },
-    { m: 12, d: 25, name: 'क्रिसमस', cats: ['central', 'state', 'bank', 'cbse', 'edu', 'hc', 'cc'] },
-    // Approximate vacation windows — indicative only (see disclaimer)
-    { m: 5, d: 15, name: 'ग्रीष्मकालीन अवकाश प्रारंभ (लगभग मध्य-मई से जून) — अनुमानित', cats: ['cbse', 'edu', 'hc', 'cc'] },
-    { m: 12, d: 26, name: 'शीतकालीन अवकाश प्रारंभ (लगभग 26 दिसम्बर – 1 जनवरी) — अनुमानित', cats: ['cbse', 'edu', 'hc', 'cc'] }
+    { m: 8, d: 15, name: 'स्वतंत्रता दिवस', cats: ['state'] },
+    { m: 10, d: 2, name: 'गांधी जयंती', cats: ['state'] },
+    { m: 12, d: 25, name: 'क्रिसमस', cats: ['state'] }
   ];
 
   // Year-specific state/regional lunar festivals whose date isn't derived
@@ -1659,26 +2213,385 @@
     { y: 2026, m: 3, d: 19, name: 'उगादी', cats: ['state', 'bank'], states: ['KA', 'AP', 'TG'] }
   ];
 
+  // Rajasthan state-government holiday list (official dates). For a Rajasthan location this list is
+  // the ONLY source of the 'state' category — the computed/generic state entries are dropped (see
+  // pchBuildPublicHolidays). Names match the generic ones so they merge with central/bank chips.
+  // Eid-ul-Fitr, Bakrid, Muharram and Id-e-Milad dates are tentative (moon sighting).
+  const HOL_RAJASTHAN = [
+    { y: 2026, m: 11, d: 8,  name: 'दीपावली' },
+    { y: 2026, m: 11, d: 9,  name: 'गोवर्धन पूजा' },
+    { y: 2026, m: 11, d: 11, name: 'भाई दूज' },
+    { y: 2026, m: 11, d: 24, name: 'गुरु नानक जयंती' },
+    { y: 2026, m: 12, d: 25, name: 'क्रिसमस' },
+    { y: 2027, m: 1,  d: 26, name: 'गणतंत्र दिवस' },
+    { y: 2027, m: 2,  d: 13, name: 'देवनारायण जयंती' },
+    { y: 2027, m: 3,  d: 6,  name: 'महाशिवरात्रि' },
+    { y: 2027, m: 3,  d: 10, name: 'ईद-उल-फितर' },
+    { y: 2027, m: 3,  d: 22, name: 'होली' },
+    { y: 2027, m: 3,  d: 23, name: 'होली' },
+    { y: 2027, m: 3,  d: 26, name: 'गुड फ्राइडे' },
+    { y: 2027, m: 4,  d: 14, name: 'डॉ. भीमराव अम्बेडकर जयंती' },
+    { y: 2027, m: 4,  d: 15, name: 'राम नवमी' },
+    { y: 2027, m: 4,  d: 19, name: 'महावीर जयंती' },
+    { y: 2027, m: 5,  d: 17, name: 'ईद-उल-जुहा (बकरीद)' },
+    { y: 2027, m: 6,  d: 7,  name: 'महाराणा प्रताप जयंती' },
+    { y: 2027, m: 6,  d: 15, name: 'मुहर्रम' },
+    { y: 2027, m: 6,  d: 16, name: 'मुहर्रम' },
+    { y: 2027, m: 8,  d: 15, name: 'स्वतंत्रता दिवस' },
+    { y: 2027, m: 8,  d: 15, name: 'ईद-ए-मिलाद (पैगंबर मोहम्मद जन्मदिवस)' },
+    { y: 2027, m: 8,  d: 17, name: 'रक्षाबंधन' },
+    { y: 2027, m: 8,  d: 25, name: 'जन्माष्टमी' },
+    { y: 2027, m: 9,  d: 10, name: 'रामदेव जयंती व तेजा दशमी' },
+    { y: 2027, m: 10, d: 2,  name: 'गांधी जयंती' },
+    { y: 2027, m: 10, d: 7,  name: 'दुर्गा अष्टमी' },
+    { y: 2027, m: 10, d: 9,  name: 'दशहरा (विजयादशमी)' },
+    { y: 2027, m: 10, d: 29, name: 'दीपावली' },
+    { y: 2027, m: 10, d: 30, name: 'गोवर्धन पूजा' },
+    { y: 2027, m: 12, d: 25, name: 'क्रिसमस' }
+  ];
+
+  // District / Civil (subordinate) court holiday list, Nov 2026 – Dec 2027 (official list, Rajasthan).
+  // This is the ONLY source of the 'cc' category — generic/computed entries no longer carry 'cc'.
+  // Single days: [y, m, d, name]; vacation spans: [y, m, dayFrom, dayTo, name] (within one month).
+  // 28 Nov 2026 (4th Sat) is a WORKING day for subordinate courts. Kota district also gets the day
+  // after Janmashtami off (not modelled — location is state-level only).
+  const HOL_CIVILCOURT = [
+    [2026, 11, 24, 'गुरु नानक जयंती'],
+    [2026, 12, 25, 'क्रिसमस'],
+    [2027, 1, 1, 'नववर्ष'],
+    [2027, 1, 26, 'गणतंत्र दिवस'],
+    [2027, 3, 6, 'महाशिवरात्रि'],
+    [2027, 3, 10, 'ईद-उल-फितर'],
+    [2027, 3, 21, 'होली'],
+    [2027, 3, 22, 'होली'],
+    [2027, 3, 26, 'गुड फ्राइडे'],
+    [2027, 4, 14, 'डॉ. भीमराव अम्बेडकर जयंती'],
+    [2027, 4, 15, 'राम नवमी'],
+    [2027, 4, 19, 'महावीर जयंती'],
+    [2027, 5, 17, 'ईद-उल-जुहा (बकरीद)'],
+    [2027, 6, 7, 'महाराणा प्रताप जयंती'],
+    [2027, 6, 16, 'मुहर्रम'],
+    [2027, 8, 15, 'स्वतंत्रता दिवस'],
+    [2027, 8, 15, 'ईद-ए-मिलाद (पैगंबर मोहम्मद जन्मदिवस)'],
+    [2027, 8, 17, 'रक्षाबंधन'],
+    [2027, 8, 25, 'जन्माष्टमी'],
+    [2027, 9, 10, 'रामदेव जयंती व तेजा दशमी'],
+    [2027, 10, 2, 'गांधी जयंती'],
+    [2027, 11, 14, 'गुरु नानक जयंती'],
+    [2027, 12, 25, 'क्रिसमस'],
+    [2026, 11, 14, 'द्वितीय शनिवार'],
+    [2026, 12, 12, 'द्वितीय शनिवार'],
+    [2027, 1, 9, 'द्वितीय शनिवार'],
+    [2027, 2, 13, 'द्वितीय शनिवार'],
+    [2027, 3, 13, 'द्वितीय शनिवार'],
+    [2027, 4, 10, 'द्वितीय शनिवार'],
+    [2027, 5, 8, 'द्वितीय शनिवार'],
+    [2027, 6, 12, 'द्वितीय शनिवार'],
+    [2027, 7, 10, 'द्वितीय शनिवार'],
+    [2027, 8, 14, 'द्वितीय शनिवार'],
+    [2027, 9, 11, 'द्वितीय शनिवार'],
+    [2027, 10, 9, 'द्वितीय शनिवार'],
+    [2027, 11, 13, 'द्वितीय शनिवार'],
+    [2027, 12, 11, 'द्वितीय शनिवार'],
+    [2026, 12, 26, 'चतुर्थ शनिवार'],
+    [2027, 1, 23, 'चतुर्थ शनिवार'],
+    [2027, 2, 27, 'चतुर्थ शनिवार'],
+    [2027, 3, 27, 'चतुर्थ शनिवार'],
+    [2027, 4, 24, 'चतुर्थ शनिवार'],
+    [2027, 5, 22, 'चतुर्थ शनिवार'],
+    [2027, 6, 26, 'चतुर्थ शनिवार'],
+    [2027, 7, 24, 'चतुर्थ शनिवार'],
+    [2027, 8, 28, 'चतुर्थ शनिवार'],
+    [2027, 9, 25, 'चतुर्थ शनिवार'],
+    [2027, 10, 23, 'चतुर्थ शनिवार'],
+    [2027, 11, 27, 'चतुर्थ शनिवार']
+  ];
+  const HOL_CIVILCOURT_RANGES = [
+    [2026, 11, 7, 13, 'दीपावली अवकाश'],
+    [2026, 12, 25, 31, 'शीतकालीन अवकाश'],
+    [2027, 5, 31, 31, 'ग्रीष्मावकाश'],
+    [2027, 6, 1, 27, 'ग्रीष्मावकाश'],
+    [2027, 10, 7, 9, 'दशहरा अवकाश'],
+    [2027, 10, 27, 31, 'दीपावली अवकाश'],
+    [2027, 12, 25, 31, 'शीतकालीन अवकाश']
+  ];
+
+  // Rajasthan High Court holiday list, Nov 2026 – Dec 2027 (official list).
+  // This is the ONLY source of the 'hc' category — generic/computed entries no longer carry 'hc'.
+  // Same format as HOL_CIVILCOURT above. Weekly Sundays are intentionally not listed;
+  // 28 Nov 2026 (4th Sat) is a WORKING day for the High Court.
+  const HOL_HIGHCOURT = [
+    [2026, 11, 24, 'गुरु नानक जयंती'],
+    [2026, 12, 25, 'क्रिसमस'],
+    [2027, 1, 1, 'नववर्ष'],
+    [2027, 1, 26, 'गणतंत्र दिवस'],
+    [2027, 3, 6, 'महाशिवरात्रि'],
+    [2027, 3, 10, 'ईद-उल-फितर'],
+    [2027, 3, 22, 'होली'],
+    [2027, 3, 23, 'होली'],
+    [2027, 3, 26, 'गुड फ्राइडे'],
+    [2027, 4, 8, 'चेटीचंड'],
+    [2027, 4, 14, 'डॉ. भीमराव अम्बेडकर जयंती'],
+    [2027, 4, 15, 'राम नवमी'],
+    [2027, 4, 19, 'महावीर जयंती'],
+    [2027, 5, 17, 'ईद-उल-जुहा (बकरीद)'],
+    [2027, 6, 7, 'महाराणा प्रताप जयंती'],
+    [2027, 6, 16, 'मुहर्रम'],
+    [2027, 8, 9, 'विश्व आदिवासी दिवस'],
+    [2027, 8, 15, 'स्वतंत्रता दिवस'],
+    [2027, 8, 15, 'ईद-ए-मिलाद (पैगंबर मोहम्मद जन्मदिवस)'],
+    [2027, 8, 17, 'रक्षाबंधन'],
+    [2027, 8, 25, 'जन्माष्टमी'],
+    [2027, 9, 10, 'रामदेव जयंती व तेजा दशमी'],
+    [2027, 10, 1, 'स्थापना नवरात्र'],
+    [2027, 10, 2, 'गांधी जयंती'],
+    [2027, 11, 14, 'गुरु नानक जयंती'],
+    [2027, 12, 25, 'क्रिसमस'],
+    [2026, 11, 14, 'द्वितीय शनिवार'],
+    [2026, 12, 12, 'द्वितीय शनिवार'],
+    [2027, 1, 9, 'द्वितीय शनिवार'],
+    [2027, 2, 13, 'द्वितीय शनिवार'],
+    [2027, 3, 13, 'द्वितीय शनिवार'],
+    [2027, 4, 10, 'द्वितीय शनिवार'],
+    [2027, 5, 8, 'द्वितीय शनिवार'],
+    [2027, 6, 12, 'द्वितीय शनिवार'],
+    [2027, 7, 10, 'द्वितीय शनिवार'],
+    [2027, 8, 14, 'द्वितीय शनिवार'],
+    [2027, 9, 11, 'द्वितीय शनिवार'],
+    [2027, 10, 9, 'द्वितीय शनिवार'],
+    [2027, 11, 13, 'द्वितीय शनिवार'],
+    [2027, 12, 11, 'द्वितीय शनिवार'],
+    [2026, 12, 26, 'चतुर्थ शनिवार'],
+    [2027, 1, 23, 'चतुर्थ शनिवार'],
+    [2027, 2, 27, 'चतुर्थ शनिवार'],
+    [2027, 3, 27, 'चतुर्थ शनिवार'],
+    [2027, 4, 24, 'चतुर्थ शनिवार'],
+    [2027, 5, 22, 'चतुर्थ शनिवार'],
+    [2027, 6, 26, 'चतुर्थ शनिवार'],
+    [2027, 7, 24, 'चतुर्थ शनिवार'],
+    [2027, 8, 28, 'चतुर्थ शनिवार'],
+    [2027, 9, 25, 'चतुर्थ शनिवार'],
+    [2027, 10, 23, 'चतुर्थ शनिवार'],
+    [2027, 11, 27, 'चतुर्थ शनिवार']
+  ];
+  const HOL_HIGHCOURT_RANGES = [
+    [2026, 11, 7, 13, 'दीपावली अवकाश'],
+    [2026, 12, 24, 31, 'शीतकालीन अवकाश'],
+    [2027, 5, 31, 31, 'ग्रीष्मावकाश'],
+    [2027, 6, 1, 27, 'ग्रीष्मावकाश'],
+    [2027, 10, 7, 9, 'दशहरा अवकाश'],
+    [2027, 10, 27, 31, 'दीपावली अवकाश'],
+    [2027, 12, 25, 31, 'शीतकालीन अवकाश']
+  ];
+
+  // CBSE / Kendriya Vidyalaya (Jaipur region) holiday list, Nov 2026 – Dec 2027.
+  // This is the ONLY source of the 'cbse' category — generic/computed entries no longer carry 'cbse'.
+  // Same format as HOL_CIVILCOURT above. Long vacations follow the usual KVS/CBSE pattern and are
+  // approximate (private CBSE schools often differ, e.g. winter break 31 Dec – 10 Jan).
+  const HOL_CBSE = [
+    [2026, 11, 8, 'दीपावली'],
+    [2026, 11, 9, 'गोवर्धन पूजा'],
+    [2026, 11, 11, 'भाई दूज'],
+    [2026, 11, 24, 'गुरु नानक जयंती'],
+    [2026, 12, 25, 'क्रिसमस'],
+    [2027, 1, 1, 'नववर्ष'],
+    [2027, 1, 14, 'मकर संक्रांति'],
+    [2027, 1, 26, 'गणतंत्र दिवस'],
+    [2027, 3, 6, 'महाशिवरात्रि'],
+    [2027, 3, 10, 'ईद-उल-फितर'],
+    [2027, 3, 22, 'होलिका दहन'],
+    [2027, 3, 23, 'होली'],
+    [2027, 3, 26, 'गुड फ्राइडे'],
+    [2027, 4, 8, 'चेटीचंड'],
+    [2027, 4, 14, 'डॉ. भीमराव अम्बेडकर जयंती'],
+    [2027, 4, 15, 'राम नवमी'],
+    [2027, 4, 19, 'महावीर जयंती'],
+    [2027, 5, 17, 'ईद-उल-जुहा (बकरीद)'],
+    [2027, 5, 20, 'बुद्ध पूर्णिमा'],
+    [2027, 6, 7, 'महाराणा प्रताप जयंती'],
+    [2027, 6, 16, 'मुहर्रम'],
+    [2027, 8, 4, 'हरियाली तीज'],
+    [2027, 8, 15, 'स्वतंत्रता दिवस'],
+    [2027, 8, 15, 'ईद-ए-मिलाद (पैगंबर मोहम्मद जन्मदिवस)'],
+    [2027, 8, 17, 'रक्षाबंधन'],
+    [2027, 8, 25, 'जन्माष्टमी'],
+    [2027, 10, 2, 'गांधी जयंती'],
+    [2027, 10, 9, 'दशहरा (विजयादशमी)'],
+    [2027, 10, 29, 'दीपावली'],
+    [2027, 11, 14, 'गुरु नानक जयंती'],
+    [2027, 12, 25, 'क्रिसमस']
+  ];
+  const HOL_CBSE_RANGES = [
+    [2026, 12, 23, 31, 'शीतकालीन अवकाश'],
+    [2027, 1, 1, 2, 'शीतकालीन अवकाश'],
+    [2027, 5, 3, 31, 'ग्रीष्मावकाश (अनुमानित)'],
+    [2027, 6, 1, 20, 'ग्रीष्मावकाश (अनुमानित)'],
+    [2027, 10, 7, 16, 'शरदकालीन / दशहरा अवकाश (अनुमानित)'],
+    [2027, 10, 27, 31, 'दीपावली अवकाश (निजी CBSE स्कूल, अनुमानित)'],
+    [2027, 11, 1, 2, 'दीपावली अवकाश (निजी CBSE स्कूल, अनुमानित)'],
+    [2027, 12, 23, 31, 'शीतकालीन अवकाश'],
+    [2028, 1, 1, 2, 'शीतकालीन अवकाश']
+  ];
+
+  // Rajasthan Education Department (Shivira Panchang) school holiday list, Nov 2026 – Dec 2027.
+  // This is the ONLY source of the 'edu' category — generic/computed entries no longer carry 'edu'.
+  // Same format as HOL_CIVILCOURT above. 26 Jan, 15 Aug and 2 Oct are celebration days in schools
+  // (no holiday) and are labelled so. Long vacations (summer, Diwali 2027, winter 2027-28) are approximate.
+  const HOL_EDU = [
+    [2026, 11, 8, 'दीपावली'],
+    [2026, 11, 9, 'गोवर्धन पूजा'],
+    [2026, 11, 11, 'भाई दूज'],
+    [2026, 11, 24, 'गुरु नानक जयंती'],
+    [2026, 12, 25, 'क्रिसमस'],
+    [2027, 1, 26, 'गणतंत्र दिवस (उत्सव दिवस — अवकाश नहीं)'],
+    [2027, 2, 13, 'देवनारायण जयंती'],
+    [2027, 3, 6, 'महाशिवरात्रि'],
+    [2027, 3, 10, 'ईद-उल-फितर'],
+    [2027, 3, 22, 'होलिका दहन'],
+    [2027, 3, 23, 'होली'],
+    [2027, 3, 26, 'गुड फ्राइडे'],
+    [2027, 4, 8, 'चेटीचंड'],
+    [2027, 4, 11, 'महात्मा ज्योतिबा फुले जयंती'],
+    [2027, 4, 14, 'डॉ. भीमराव अम्बेडकर जयंती'],
+    [2027, 4, 15, 'राम नवमी'],
+    [2027, 4, 19, 'महावीर जयंती'],
+    [2027, 5, 8, 'महर्षि परशुराम जयंती'],
+    [2027, 5, 17, 'ईद-उल-जुहा (बकरीद)'],
+    [2027, 5, 20, 'बुद्ध पूर्णिमा'],
+    [2027, 6, 7, 'महाराणा प्रताप जयंती'],
+    [2027, 6, 16, 'मुहर्रम'],
+    [2027, 8, 9, 'विश्व आदिवासी दिवस'],
+    [2027, 8, 15, 'स्वतंत्रता दिवस (उत्सव दिवस — अवकाश नहीं)'],
+    [2027, 8, 15, 'ईद-ए-मिलाद (पैगंबर मोहम्मद जन्मदिवस)'],
+    [2027, 8, 17, 'रक्षाबंधन'],
+    [2027, 8, 25, 'जन्माष्टमी'],
+    [2027, 9, 10, 'रामदेव जयंती व तेजा दशमी'],
+    [2027, 9, 30, 'नवरात्र स्थापना'],
+    [2027, 10, 2, 'गांधी जयंती (उत्सव दिवस — अवकाश नहीं)'],
+    [2027, 10, 7, 'दुर्गाष्टमी'],
+    [2027, 10, 8, 'महानवमी'],
+    [2027, 10, 9, 'दशहरा (विजयादशमी)'],
+    [2027, 10, 29, 'दीपावली'],
+    [2027, 10, 30, 'गोवर्धन पूजा'],
+    [2027, 10, 31, 'भाई दूज'],
+    [2027, 11, 14, 'गुरु नानक जयंती'],
+    [2027, 12, 25, 'क्रिसमस']
+  ];
+  const HOL_EDU_RANGES = [
+    [2026, 11, 4, 15, 'दीपावली अवकाश'],
+    [2026, 12, 31, 31, 'शीतकालीन अवकाश'],
+    [2027, 1, 1, 10, 'शीतकालीन अवकाश'],
+    [2027, 5, 17, 31, 'ग्रीष्मावकाश (अनुमानित)'],
+    [2027, 6, 1, 20, 'ग्रीष्मावकाश (अनुमानित)'],
+    [2027, 10, 25, 31, 'दीपावली अवकाश (अनुमानित)'],
+    [2027, 11, 1, 5, 'दीपावली अवकाश (अनुमानित)'],
+    [2027, 12, 25, 31, 'शीतकालीन अवकाश (अनुमानित)'],
+    [2028, 1, 1, 5, 'शीतकालीन अवकाश (अनुमानित)']
+  ];
+
+  // Bank holiday list, Nov 2026 – Dec 2027 (national / Rajasthan; festival dates are indicative and
+  // subject to the state RBI notification). Source of the nationwide 'bank' entries — the generic
+  // entries no longer carry 'bank'. State-specific bank rules (gated by `states`) are unchanged.
+  // Same format as HOL_CIVILCOURT above.  Weekly Sundays are intentionally not listed.
+  const HOL_BANK = [
+    [2026, 11, 24, 'गुरु नानक जयंती'],
+    [2026, 12, 25, 'क्रिसमस'],
+    [2027, 1, 26, 'गणतंत्र दिवस'],
+    [2027, 3, 10, 'ईद-उल-फितर'],
+    [2027, 3, 23, 'होली'],
+    [2027, 3, 26, 'गुड फ्राइडे'],
+    [2027, 4, 1, 'बैंक खातों का वार्षिक समापन (जनता के लिए लेन-देन बंद)'],
+    [2027, 4, 15, 'राम नवमी'],
+    [2027, 4, 19, 'महावीर जयंती'],
+    [2027, 5, 17, 'ईद-उल-जुहा (बकरीद)'],
+    [2027, 5, 20, 'बुद्ध पूर्णिमा'],
+    [2027, 6, 16, 'मुहर्रम'],
+    [2027, 8, 15, 'स्वतंत्रता दिवस'],
+    [2027, 8, 25, 'जन्माष्टमी'],
+    [2027, 10, 2, 'गांधी जयंती'],
+    [2027, 10, 9, 'दशहरा (विजयादशमी)'],
+    [2027, 10, 29, 'दीपावली'],
+    [2027, 11, 14, 'गुरु नानक जयंती'],
+    [2027, 12, 25, 'क्रिसमस'],
+    [2026, 12, 12, 'द्वितीय शनिवार'],
+    [2027, 1, 9, 'द्वितीय शनिवार'],
+    [2027, 2, 13, 'द्वितीय शनिवार'],
+    [2027, 3, 13, 'द्वितीय शनिवार'],
+    [2027, 4, 10, 'द्वितीय शनिवार'],
+    [2027, 5, 8, 'द्वितीय शनिवार'],
+    [2027, 6, 12, 'द्वितीय शनिवार'],
+    [2027, 7, 10, 'द्वितीय शनिवार'],
+    [2027, 8, 14, 'द्वितीय शनिवार'],
+    [2027, 9, 11, 'द्वितीय शनिवार'],
+    [2027, 10, 9, 'द्वितीय शनिवार'],
+    [2027, 11, 13, 'द्वितीय शनिवार'],
+    [2027, 12, 11, 'द्वितीय शनिवार'],
+    [2026, 11, 28, 'चतुर्थ शनिवार'],
+    [2026, 12, 26, 'चतुर्थ शनिवार'],
+    [2027, 1, 23, 'चतुर्थ शनिवार'],
+    [2027, 2, 27, 'चतुर्थ शनिवार'],
+    [2027, 3, 27, 'चतुर्थ शनिवार'],
+    [2027, 4, 24, 'चतुर्थ शनिवार'],
+    [2027, 5, 22, 'चतुर्थ शनिवार'],
+    [2027, 6, 26, 'चतुर्थ शनिवार'],
+    [2027, 7, 24, 'चतुर्थ शनिवार'],
+    [2027, 8, 28, 'चतुर्थ शनिवार'],
+    [2027, 9, 25, 'चतुर्थ शनिवार'],
+    [2027, 10, 23, 'चतुर्थ शनिवार'],
+    [2027, 11, 27, 'चतुर्थ शनिवार'],
+    [2027, 12, 25, 'चतुर्थ शनिवार']
+  ];
+
+  // Central Government offices in Rajasthan (CGEWCC Jaipur, DoPT 2027 order), Nov 2026 – Dec 2027.
+  // Source of the 'central' category — generic/computed entries no longer carry 'central'.
+  // Gazetted holidays only (they mark the date red in the calendar). Restricted/optional holidays are intentionally not listed.
+  // Moon-sighting dates (Eid, Bakrid, Muharram) may shift by a day.
+  const HOL_CENTRAL = [
+    [2026, 11, 8, 'दीपावली'],
+    [2026, 11, 24, 'गुरु नानक जयंती'],
+    [2026, 12, 25, 'क्रिसमस'],
+    [2027, 1, 26, 'गणतंत्र दिवस'],
+    [2027, 3, 10, 'ईद-उल-फितर'],
+    [2027, 3, 23, 'होली'],
+    [2027, 3, 26, 'गुड फ्राइडे'],
+    [2027, 4, 15, 'राम नवमी'],
+    [2027, 4, 19, 'महावीर जयंती'],
+    [2027, 5, 17, 'ईद-उल-जुहा (बकरीद)'],
+    [2027, 5, 20, 'बुद्ध पूर्णिमा'],
+    [2027, 6, 16, 'मुहर्रम'],
+    [2027, 8, 15, 'स्वतंत्रता दिवस'],
+    [2027, 8, 15, 'ईद-ए-मिलाद (पैगंबर मोहम्मद जन्मदिवस)'],
+    [2027, 8, 25, 'जन्माष्टमी'],
+    [2027, 10, 2, 'गांधी जयंती'],
+    [2027, 10, 9, 'दशहरा (विजयादशमी)'],
+    [2027, 10, 29, 'दीपावली'],
+    [2027, 11, 14, 'गुरु नानक जयंती'],
+    [2027, 12, 25, 'क्रिसमस']
+  ];
+
   // Lunar/Hindu-calendar holidays, matched off the already-computed
   // Vrat/Tyohar events by label text (and masa/paksha where the label
   // is a generic one reused across months, e.g. "पूर्णिमा व्रत").
   // `states`, where present, restricts the rule the same way as in
   // HOL_FIXED above.
+  // Dates (UTC-midnight ms) that carry Vaishnava Janmashtami in the current build: the day before such a
+  // date is not listed as the Janmashtami holiday (the government list follows the Vaishnava day).
+  let pchHolVaishnavJanm = {};
   const HOL_LUNAR_RULES = [
-    { test: ev => ev.label.indexOf('होली (धुलंडी') === 0, name: 'होली', cats: ['central', 'state', 'bank', 'cbse', 'edu', 'hc', 'cc'] },
-    { test: ev => ev.label === 'राम नवमी', name: 'राम नवमी', cats: ['central', 'state', 'bank'] },
-    { test: ev => ev.masa === 'चैत्र' && ev.paksha === 'शुक्ल' && ev.label === 'प्रदोष व्रत', name: 'महावीर जयंती', cats: ['central', 'state', 'bank'] },
-    { test: ev => ev.masa === 'वैशाख' && ev.label === 'पूर्णिमा व्रत', name: 'बुद्ध पूर्णिमा', cats: ['central', 'state', 'bank'] },
-    { test: ev => ev.label.indexOf('श्री कृष्ण जन्माष्टमी') === 0, name: 'जन्माष्टमी', cats: ['central', 'state', 'bank', 'cbse', 'edu'] },
-    { test: ev => ev.label.indexOf('गणेश चतुर्थी') === 0, name: 'गणेश चतुर्थी', cats: ['state'], states: HOL_REGION_MAHA_GOA },
-    { test: ev => ev.label.indexOf('विजयादशमी') !== -1, name: 'दशहरा (विजयादशमी)', cats: ['central', 'state', 'bank', 'cbse', 'edu', 'hc', 'cc'] },
-    { test: ev => ev.label.indexOf('दीपावली (अमावस्या)') === 0, name: 'दीपावली', cats: ['central', 'state', 'bank', 'cbse', 'edu', 'hc', 'cc'] },
-    { test: ev => ev.label.indexOf('नरक चतुर्दशी') === 0, name: 'नरक चतुर्दशी (छोटी दीपावली)', cats: ['bank'], states: HOL_REGION_HINDI_BELT },
-    { test: ev => ev.label.indexOf('गोवर्धन पूजा') === 0, name: 'गोवर्धन पूजा', cats: ['bank', 'state'], states: HOL_REGION_HINDI_BELT },
-    { test: ev => ev.label.indexOf('भाई दूज') === 0, name: 'भाई दूज', cats: ['bank', 'state'], states: HOL_REGION_HINDI_BELT },
-    { test: ev => ev.label.indexOf('महाशिवरात्रि') === 0, name: 'महाशिवरात्रि', cats: ['central', 'state', 'bank'] },
-    { test: ev => ev.label.indexOf('कार्तिक पूर्णिमा') === 0, name: 'गुरु नानक जयंती', cats: ['central', 'state', 'bank'] },
-    { test: ev => ev.label.indexOf('रक्षाबंधन') === 0, name: 'रक्षाबंधन', cats: ['bank'], states: HOL_REGION_HINDI_BELT }
+    { test: ev => ev.label.indexOf('होली (धुलंडी') !== -1, name: 'होली', cats: ['state'] },
+    { test: ev => ev.label.indexOf('राम नवमी') !== -1, name: 'राम नवमी', cats: ['state'] },
+    { test: ev => ev.label.indexOf('महावीर जयंती') !== -1, name: 'महावीर जयंती', cats: ['state'] },
+    { test: ev => ev.label.indexOf('बुद्ध पूर्णिमा') !== -1, name: 'बुद्ध पूर्णिमा', cats: ['state'] },
+    { test: ev => ev.label.indexOf('श्री कृष्ण जन्माष्टमी') !== -1 && !pchHolVaishnavJanm[+ev.dateObj + 86400000], name: 'जन्माष्टमी', cats: ['state'] },
+    { test: ev => ev.label.indexOf('गणेश चतुर्थी') !== -1, name: 'गणेश चतुर्थी', cats: ['state'], states: HOL_REGION_MAHA_GOA },
+    { test: ev => ev.label.indexOf('विजयादशमी') !== -1, name: 'दशहरा (विजयादशमी)', cats: ['state'] },
+    { test: ev => ev.label.indexOf('दीपावली (अमावस्या)') !== -1, name: 'दीपावली', cats: ['state'] },
+    { test: ev => ev.label.indexOf('नरक चतुर्दशी') !== -1, name: 'नरक चतुर्दशी (छोटी दीपावली)', cats: ['bank'], states: HOL_REGION_HINDI_BELT },
+    { test: ev => ev.label.indexOf('गोवर्धन पूजा') !== -1, name: 'गोवर्धन पूजा', cats: ['bank', 'state'], states: HOL_REGION_HINDI_BELT },
+    { test: ev => ev.label.indexOf('भाई दूज') !== -1, name: 'भाई दूज', cats: ['bank', 'state'], states: HOL_REGION_HINDI_BELT },
+    { test: ev => ev.label.indexOf('महाशिवरात्रि') !== -1, name: 'महाशिवरात्रि', cats: ['state'] },
+    { test: ev => ev.label.indexOf('कार्तिक पूर्णिमा') !== -1, name: 'गुरु नानक जयंती', cats: ['state'] },
+    { test: ev => ev.label.indexOf('रक्षाबंधन') !== -1, name: 'रक्षाबंधन', cats: ['bank'], states: HOL_REGION_HINDI_BELT }
   ];
 
   // Gauss/Meeus algorithm — exact Gregorian-calendar Easter Sunday date; Good Friday = Easter − 2 days
@@ -1712,14 +2625,18 @@
     const y = startYMD ? startYMD.y : localNow.getUTCFullYear(), m = startYMD ? startYMD.m : localNow.getUTCMonth(), d = startYMD ? startYMD.d : localNow.getUTCDate();
     const todayUTC = Date.UTC(y, m, d);
     const cutoffUTC = todayUTC + daysAhead * 86400000;
-    const merged = {}; // key: 'YYYY-MM-DD|name' -> { dateObj, name, cats:Set }
+    const merged = {}; // key: 'YYYY-M-D' -> { dateObj, name (display title), cats:Set (every body that declared a holiday), entries:[{name,cats}], ruleLabels:[] }
 
-    function addEvent(dateUTCms, name, cats) {
+    const isRJ = pchStateCode(PCH.state) === 'RJ';
+    function addEvent(dateUTCms, name, cats, fromRJList, vratLabel) {
       if (dateUTCms < todayUTC || dateUTCms > cutoffUTC) return;
+      if (isRJ && !fromRJList) { cats = cats.filter(c => c !== 'state'); if (!cats.length) return; }
       const dObj = new Date(dateUTCms);
-      const key = dObj.getUTCFullYear() + '-' + dObj.getUTCMonth() + '-' + dObj.getUTCDate() + '|' + name;
-      if (!merged[key]) merged[key] = { dateObj: dObj, name: name, cats: new Set() };
+      const key = dObj.getUTCFullYear() + '-' + dObj.getUTCMonth() + '-' + dObj.getUTCDate(); // ONE row per date
+      if (!merged[key]) merged[key] = { dateObj: dObj, name: name, cats: new Set(), entries: [], ruleLabels: [] };
       cats.forEach(c => merged[key].cats.add(c));
+      merged[key].entries.push({ name: name, ncats: cats.length });
+      if (vratLabel) merged[key].ruleLabels.push(vratLabel);
     }
 
     // Fixed-date holidays across every year touched by the window
@@ -1735,7 +2652,7 @@
         }
         addEvent(Date.UTC(yr, h.m - 1, h.d), h.name, h.cats);
       });
-      addEvent(pchGoodFriday(yr).getTime(), 'गुड फ्राइडे', ['central', 'state', 'bank', 'cbse', 'edu', 'hc', 'cc']);
+      addEvent(pchGoodFriday(yr).getTime(), 'गुड फ्राइडे', ['state']);
     });
 
     // India Post — official published dates take precedence for the 'post' category
@@ -1750,15 +2667,72 @@
     // State-specific solar/lunar festivals not covered by the Vrat scan
     HOL_STATE_LUNAR_2026.forEach(h => { if (pchStateAllowed(h)) addEvent(Date.UTC(h.y, h.m - 1, h.d), h.name, h.cats); });
 
+    // Rajasthan: official state-government list is the only source of the 'state' category
+    if (isRJ) HOL_RAJASTHAN.forEach(h => addEvent(Date.UTC(h.y, h.m - 1, h.d), h.name, ['state'], true));
+
+    // District / Civil courts — official list only ('cc' category)
+    HOL_CIVILCOURT.forEach(h => addEvent(Date.UTC(h[0], h[1] - 1, h[2]), h[3], ['cc']));
+    HOL_CIVILCOURT_RANGES.forEach(r => { for (let dd = r[2]; dd <= r[3]; dd++) addEvent(Date.UTC(r[0], r[1] - 1, dd), r[4], ['cc']); });
+
+    // Rajasthan High Court — official list only ('hc' category)
+    HOL_HIGHCOURT.forEach(h => addEvent(Date.UTC(h[0], h[1] - 1, h[2]), h[3], ['hc']));
+    HOL_HIGHCOURT_RANGES.forEach(r => { for (let dd = r[2]; dd <= r[3]; dd++) addEvent(Date.UTC(r[0], r[1] - 1, dd), r[4], ['hc']); });
+
+    // CBSE / Kendriya Vidyalaya — official list only ('cbse' category)
+    HOL_CBSE.forEach(h => addEvent(Date.UTC(h[0], h[1] - 1, h[2]), h[3], ['cbse']));
+    HOL_CBSE_RANGES.forEach(r => { for (let dd = r[2]; dd <= r[3]; dd++) addEvent(Date.UTC(r[0], r[1] - 1, dd), r[4], ['cbse']); });
+
+    // Rajasthan Education Department (Shivira Panchang) — official list only ('edu' category)
+    HOL_EDU.forEach(h => addEvent(Date.UTC(h[0], h[1] - 1, h[2]), h[3], ['edu']));
+    HOL_EDU_RANGES.forEach(r => { for (let dd = r[2]; dd <= r[3]; dd++) addEvent(Date.UTC(r[0], r[1] - 1, dd), r[4], ['edu']); });
+
+    // Banks — published list for the nationwide 'bank' category
+    HOL_BANK.forEach(h => addEvent(Date.UTC(h[0], h[1] - 1, h[2]), h[3], ['bank']));
+
+    // Central Government offices (Rajasthan) — published list for the 'central' category
+    HOL_CENTRAL.forEach(h => addEvent(Date.UTC(h[0], h[1] - 1, h[2]), h[3], ['central']));
+
     // Lunar holidays derived from the already-computed Vrat/Tyohar scan
+    pchHolVaishnavJanm = {};
+    (vratEvents || PCH_VRAT_EVENTS || []).forEach(ev => { if (ev.label.indexOf('वैष्णव श्री कृष्ण जन्माष्टमी') !== -1) pchHolVaishnavJanm[+ev.dateObj] = true; });
     (vratEvents || PCH_VRAT_EVENTS || []).forEach(ev => {
       for (let i = 0; i < HOL_LUNAR_RULES.length; i++) {
         const rule = HOL_LUNAR_RULES[i];
-        if (rule.test(ev) && pchStateAllowed(rule)) { addEvent(Date.UTC(ev.dateObj.getUTCFullYear(), ev.dateObj.getUTCMonth(), ev.dateObj.getUTCDate()), rule.name, rule.cats); break; }
+        if (rule.test(ev) && pchStateAllowed(rule)) addEvent(Date.UTC(ev.dateObj.getUTCFullYear(), ev.dateObj.getUTCMonth(), ev.dateObj.getUTCDate()), rule.name, rule.cats, false, ev.label);
       }
     });
 
-    const list = Object.keys(merged).map(k => merged[k]);
+    // One row per date. Title = the Panchang's own Vrat/Tyohar title for that day; the chips list every body
+    // (court, bank, school board…) that declared a holiday, whatever name it used for it.
+    const vr = vratEvents || PCH_VRAT_EVENTS || [];
+    const vrByDate = {};
+    vr.forEach(ev => {
+      const dd = ev.dateObj, k = dd.getUTCFullYear() + '-' + dd.getUTCMonth() + '-' + dd.getUTCDate();
+      (vrByDate[k] = vrByDate[k] || []).push(ev.label);
+    });
+    const HOL_STOP = { 'अवकाश': 1, 'जयंती': 1, 'दिवस': 1, 'पूजा': 1, 'व्रत': 1, 'अनुमानित': 1, 'शनिवार': 1, 'रविवार': 1, 'साप्ताहिक': 1,
+      'द्वितीय': 1, 'चतुर्थ': 1, 'प्रथम': 1, 'शीतकालीन': 1, 'प्रतिबंधित': 1, 'मध्यावधि': 1, 'उत्सव': 1, 'नहीं': 1, 'शरदकालीन': 1 };
+    const tokensOf = n => n.replace(/[()\/\-—,.।]/g, ' ').split(/\s+/).filter(t => t.length > 2 && !HOL_STOP[t]);
+    const isWeekend = n => n.indexOf('शनिवार') !== -1 || n.indexOf('रविवार') !== -1;
+    const list = Object.keys(merged).map(k => {
+      const ev = merged[k];
+      let title = ev.ruleLabels[0] || '';
+      if (!title) {
+        const toks = [];
+        ev.entries.forEach(e => tokensOf(e.name).forEach(t => toks.push(t)));
+        title = (vrByDate[k] || []).filter(l => toks.some(t => l.indexOf(t) !== -1))[0] || '';
+      }
+      if (!title) {
+        const best = ev.entries.slice().sort((a, b) => {
+          const sa = (isWeekend(a.name) ? 0 : 4) + (a.name.indexOf('प्रतिबंधित') === -1 ? 2 : 0) + (a.name.indexOf('अवकाश') === -1 || a.name.indexOf('प्रतिबंधित') !== -1 ? 1 : 0);
+          const sb = (isWeekend(b.name) ? 0 : 4) + (b.name.indexOf('प्रतिबंधित') === -1 ? 2 : 0) + (b.name.indexOf('अवकाश') === -1 || b.name.indexOf('प्रतिबंधित') !== -1 ? 1 : 0);
+          return sb - sa || b.ncats - a.ncats;
+        })[0];
+        title = best.name;
+      }
+      ev.name = title;
+      return ev;
+    });
     list.sort((a, b) => a.dateObj - b.dateObj);
     return list;
   }
@@ -1773,7 +2747,7 @@
     const monthShort = MONTH_NAMES_HI[dObj.getUTCMonth()].slice(0, 3);
     return '<div class="hol-item">'
       + '<div class="hol-date-badge"><span class="vrat-date-num">' + dayNum + '</span><span class="vrat-date-mon">' + monthShort + '</span></div>'
-      + '<div class="hol-info"><div class="hol-name">' + ev.name + '</div><div class="hol-chips">' + pchHolidayChipsHTML(ev.cats) + '</div></div>'
+      + '<div class="hol-info"><div class="hol-name">' + ev.name + pchEvTag(ev) + '</div><div class="hol-chips">' + pchHolidayChipsHTML(ev.cats) + '</div></div>'
       + '</div>';
   }
 
@@ -1796,12 +2770,19 @@
 
   let pchHolFilter = 'all';
 
-  function pchRenderHolidaysFull() {
-    const tz = (PCH && PCH.tzOffsetMin) || 330;
-    const nowBase = (PCH && PCH.customDateTime) ? PCH.customDateTime.getTime() : Date.now();
-    const localNow = new Date(nowBase + tz * 60000);
-    if (!PCH_VRAT_EVENTS.length) PCH_VRAT_EVENTS = pchBuildVratTyoharList(pchVratDaysAhead(localNow));
-    const events = pchBuildPublicHolidays(pchVratDaysAhead(localNow));
+  // Full holiday list: one calendar month at a time (current month first), same bounds as the calendar.
+  const pchHolMon = { y: 0, m: 0, swipeBound: false };
+
+  function pchRenderHolidaysFull(dir) {
+    const y = pchHolMon.y, m = pchHolMon.m;
+    const dim = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+    const events = pchBuildPublicHolidays(dim - 1, { y: y, m: m, d: 1 }, pchVratMonthEvents(y, m));
+
+    const titleEl = document.getElementById('hol-month-title');
+    if (titleEl) titleEl.textContent = MONTH_NAMES_HI[m] + ' ' + y;
+    const prevB = document.getElementById('hol-month-prev'), nextB = document.getElementById('hol-month-next');
+    if (prevB) prevB.disabled = Date.UTC(y, m, 1) <= pchCalMinUTC();
+    if (nextB) nextB.disabled = Date.UTC(y, m + 1, 1) > pchCalMaxUTC();
 
     // Filter chips row
     const filterRow = document.getElementById('hol-filter-row');
@@ -1812,15 +2793,36 @@
 
     const filtered = pchHolFilter === 'all' ? events : events.filter(ev => ev.cats.has(pchHolFilter));
     const listEl = document.getElementById('hol-full-list');
-    let html = '';
-    let curMonthLabel = null;
-    filtered.forEach(ev => {
-      const monthLabel = MONTH_NAMES_HI[ev.dateObj.getUTCMonth()] + ' ' + ev.dateObj.getUTCFullYear();
-      if (monthLabel !== curMonthLabel) { curMonthLabel = monthLabel; html += '<div class="vrat-month-heading">' + monthLabel + '</div>'; }
-      html += pchHolidayItemHTML(ev);
-    });
-    if (listEl) listEl.innerHTML = html || '<div style="padding:10px 2px; color:var(--ink-soft); font-size:13px;">इस श्रेणी में कोई शेष अवकाश नहीं मिला।</div>';
+    if (!listEl) return;
+    listEl.innerHTML = filtered.length
+      ? filtered.map(pchHolidayItemHTML).join('')
+      : '<div style="padding:10px 2px; color:var(--ink-soft); font-size:13px;">इस माह इस श्रेणी में कोई अवकाश नहीं मिला।</div>';
+    if (dir) {
+      listEl.classList.remove('pch-cal-in-next', 'pch-cal-in-prev');
+      void listEl.offsetWidth;
+      listEl.classList.add(dir > 0 ? 'pch-cal-in-next' : 'pch-cal-in-prev');
+    }
+  }
 
+  window.pchHolNav = function (dir) {
+    let y = pchHolMon.y, m = pchHolMon.m + dir;
+    if (m < 0) { m = 11; y--; } else if (m > 11) { m = 0; y++; }
+    if (Date.UTC(y, m + 1, 0) < pchCalMinUTC() || Date.UTC(y, m, 1) > pchCalMaxUTC()) return;
+    pchHolMon.y = y; pchHolMon.m = m;
+    pchRenderHolidaysFull(dir);
+  };
+
+  function pchHolBindSwipe() {
+    if (pchHolMon.swipeBound) return;
+    const el = document.getElementById('page-holidays');
+    if (!el) return;
+    pchHolMon.swipeBound = true;
+    let sx = 0, sy = 0, st = 0;
+    el.addEventListener('touchstart', function (e) { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; st = Date.now(); }, { passive: true });
+    el.addEventListener('touchend', function (e) {
+      const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && Date.now() - st < 700) window.pchHolNav(dx < 0 ? 1 : -1);
+    }, { passive: true });
   }
 
   window.pchSetHolFilter = function pchSetHolFilter(id) {
@@ -1830,6 +2832,9 @@
 
   window.showHolidaysFull = function showHolidaysFull() {
     pchHolFilter = 'all';
+    const t = pchCalToday();
+    pchHolMon.y = t.y; pchHolMon.m = t.m;       // always open on the current month
+    pchHolBindSwipe();
     pchRenderHolidaysFull();
     showSecondaryPage('page-holidays');
   };
@@ -1837,8 +2842,8 @@
   /* ══════════════════════════════════════════════════════════════════
      PANCHANG CALENDAR MODULE (Phase 1)
      Month grid shown at the very top of the Panchang page. Selectable
-     range: first day of the current month … PCH_VRAT_END_UTC (the same
-     boundary the Vrat/Holiday data uses; falls back to 31 Dec after it).
+     range: first day of the current month … last day of the month after
+     next (rolling window shared with the Vrat/Holiday lists).
      Per-day tithi in the grid is computed OFFLINE at an approximate local
      sunrise (pchApproxSunriseSetMin) — no network call per cell. ── */
   const PCH_CAL_DOW = ['रवि','सोम','मंगल','बुध','गुरु','शुक्र','शनि'];
@@ -1852,7 +2857,7 @@
   function pchCalMinUTC() { const t = pchCalToday(); return Date.UTC(t.y, t.m, 1); }
   function pchCalMaxUTC() {
     const t = pchCalToday();
-    return Date.UTC(t.y, t.m, t.d) <= PCH_VRAT_END_UTC ? PCH_VRAT_END_UTC : Date.UTC(t.y, 11, 31);
+    return pchWindowEndUTC(t.y, t.m);
   }
   function pchCalSunriseJD(y, m, d) {
     const tz = pchCalTz();
@@ -1886,16 +2891,16 @@
     const tz = pchCalTz(), dim = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
     const days = {}; // day-of-month -> { vrat: label|'', govt: bool, hol: [{name, cats}] }
     const slot = function (d) { return days[d] || (days[d] = { vrat: '', govt: false, hol: [] }); };
-    // start one day early so the builder's "same tithi within 15 days" de-dupe sees the previous day
+    // start one day early so the builder sees the previous day's tithi when judging a festival at the month edge
     const prev = new Date(Date.UTC(y, m, 0));
     const vrat = pchBuildVratTyoharList(dim + 1, { y: prev.getUTCFullYear(), m: prev.getUTCMonth(), d: prev.getUTCDate() });
     vrat.forEach(function (ev) {
-      const l = new Date(ev.dateObj.getTime() + tz * 60000); // vrat dateObj = local 06:00 instant
+      const l = ev.dateObj;                                  // vrat dateObj = UTC midnight of the local date
       if (l.getUTCFullYear() !== y || l.getUTCMonth() !== m) return;
       const s = slot(l.getUTCDate());
       s.vrat = ev.label;
     });
-    // holiday dateObj = UTC midnight of the local date
+    // holiday dateObj = UTC midnight of the local date (same convention)
     pchBuildPublicHolidays(dim - 1, { y: y, m: m, d: 1 }, vrat).forEach(function (ev) {
       const s = slot(ev.dateObj.getUTCDate());
       s.hol.push({ name: ev.name, cats: ev.cats });
