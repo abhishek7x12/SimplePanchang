@@ -698,6 +698,149 @@
     if (dayEl) dayEl.innerHTML = pchLastChogh.dayRows.map(r => pchChoghRowHTML(r, tz, r === nowRow)).join('');
     if (nightEl) nightEl.innerHTML = pchLastChogh.nightRows.map(r => pchChoghRowHTML(r, tz, r === nowRow)).join('');
   }
+  // ── Muhurt: auspicious dates of the month for particular works ──
+  // Keyed by 'YYYY-MM'. To add a month, add another key. A work with no date that month can be left out, or given days: [] and a note.
+  const PCH_MUHURT_DATES = {
+    '2026-11': [
+      { label: 'शुभ विवाह मुहूर्तः',          days: [21, 22, 24, 25, 26, 30] },
+      { label: 'नींव (गृहारंभ) मुहूर्तः',  days: [1, 2, 4, 11, 12, 14, 20, 21, 25, 26, 28, 29, 30] },
+      { label: 'जीर्णोद्धार गृह प्रवेश मुहूर्तः',     days: [4, 6, 7, 11, 12, 14, 20, 21, 25, 26, 28] },
+      { label: 'देव प्रतिष्ठा मुहूर्तः',        days: [1, 11, 14, 15, 20, 25, 26, 28, 29] },
+      { label: 'व्यापार प्रारंभ मुहूर्तः',      days: [1, 4, 6, 7, 11, 15, 20, 21, 25, 26, 28, 29] },
+      { label: 'प्रसूति स्नान मुहूर्तः',        days: [12, 19, 26] }
+    ],
+    '2026-12': [
+      { label: 'शुभ विवाह मुहूर्तः',          days: [2, 3, 4, 5, 11, 12] },
+      { label: 'नींव (गृहारंभ) मुहूर्तः',  days: [2, 3, 4, 5, 10, 11, 14] },
+      { label: 'जीर्णोद्धार गृह प्रवेश मुहूर्तः',     days: [2, 3, 4, 5, 10, 11, 12, 14] },
+      { label: 'देव प्रतिष्ठा मुहूर्तः',        days: [2, 3, 11, 12, 13, 14] },
+      { label: 'व्यापार प्रारंभ मुहूर्तः',      days: [2, 3, 4, 5, 11, 12] },
+      { label: 'प्रसूति स्नान मुहूर्तः',        days: [3, 6, 20, 22] }
+    ],
+    '2027-01': [
+      { label: 'शुभ विवाह मुहूर्तः', days: [15, 20, 24, 30, 31] },
+      { label: 'नींव (गृहारंभ) मुहूर्तः', days: [28, 29] },
+      { label: 'जीर्णोद्धार गृह प्रवेश मुहूर्तः', days: [15, 20, 22, 27, 28] },
+      { label: 'देव प्रतिष्ठा मुहूर्तः', days: [15, 20, 28, 29] },
+      { label: 'व्यापार प्रारंभ मुहूर्तः', days: [16, 20, 22, 27, 28, 29] }
+    ],
+    '2027-02': [
+      { label: 'शुभ विवाह मुहूर्तः', days: [10, 11, 21, 22, 25] },
+      { label: 'नींव (गृहारंभ) मुहूर्तः', days: [8, 18, 19, 22, 25] },
+      { label: 'जीर्णोद्धार गृह प्रवेश मुहूर्तः', days: [8, 10, 11, 15, 18, 22, 24, 25, 27] },
+      { label: 'देव प्रतिष्ठा मुहूर्तः', days: [11, 15, 18, 19, 22, 25] },
+      { label: 'व्यापार प्रारंभ मुहूर्तः', days: [8, 11, 12, 18, 19, 22, 25, 26] }
+    ],
+    '2027-03': [
+      { label: 'शुभ विवाह मुहूर्तः', days: [1, 2, 3, 4, 9, 10, 14] },
+      { label: 'नींव (गृहारंभ) मुहूर्तः', days: [10, 11] },
+      { label: 'जीर्णोद्धार गृह प्रवेश मुहूर्तः', days: [10, 11, 15] },
+      { label: 'देव प्रतिष्ठा मुहूर्तः', days: [10, 11, 14] },
+      { label: 'व्यापार प्रारंभ मुहूर्तः', days: [4, 5, 6, 10, 11, 14] }
+    ],
+    '2027-04': [
+      { label: 'शुभ विवाह मुहूर्तः', days: [18, 21, 23, 25, 26, 28] },
+      { label: 'नींव (गृहारंभ) मुहूर्तः', days: [19, 23, 28] },
+      { label: 'जीर्णोद्धार गृह प्रवेश मुहूर्तः', days: [19] },
+      { label: 'देव प्रतिष्ठा मुहूर्तः', days: [18, 19, 23, 28] },
+      { label: 'व्यापार प्रारंभ मुहूर्तः', days: [18, 23, 28, 29] }
+    ],
+    '2027-05': [
+      { label: 'शुभ विवाह मुहूर्तः', days: [7, 8, 9, 15, 20, 21, 22, 23, 24, 30] },
+      { label: 'नींव (गृहारंभ) मुहूर्तः', days: [12, 17, 21, 26] },
+      { label: 'जीर्णोद्धार गृह प्रवेश मुहूर्तः', days: [12, 17] },
+      { label: 'देव प्रतिष्ठा मुहूर्तः', days: [12, 17, 21, 26, 30] },
+      { label: 'व्यापार प्रारंभ मुहूर्तः', days: [3, 8, 9, 12, 17, 26, 28, 31] }
+    ],
+    '2027-06': [
+      { label: 'शुभ विवाह मुहूर्तः', days: [1, 4, 5, 10, 13, 16, 19, 20, 21, 26] },
+      { label: 'नींव (गृहारंभ) मुहूर्तः', days: [14, 16, 21] },
+      { label: 'जीर्णोद्धार गृह प्रवेश मुहूर्तः', days: [14] },
+      { label: 'देव प्रतिष्ठा मुहूर्तः', days: [10, 14, 16, 21] },
+      { label: 'व्यापार प्रारंभ मुहूर्तः', days: [2, 7, 13, 14, 21, 24, 25, 27] }
+    ],
+    '2027-07': [
+      { label: 'शुभ विवाह मुहूर्तः', days: [7, 9, 12, 14, 15, 16] },
+      { label: 'जीर्णोद्धार गृह प्रवेश मुहूर्तः', days: [5] },
+      { label: 'व्यापार प्रारंभ मुहूर्तः', days: [2, 5, 9, 11, 14, 21, 24, 26, 30] }
+    ],
+    '2027-08': [
+      { label: 'शुभ विवाह मुहूर्तः', days: [], note: 'कोई मुहूर्त नहीं (चातुर्मास)' },
+      { label: 'जीर्णोद्धार गृह प्रवेश मुहूर्तः', days: [], note: 'कोई मुहूर्त नहीं (चातुर्मास)' },
+      { label: 'व्यापार प्रारंभ मुहूर्तः', days: [6, 8, 11, 15, 22, 27, 29] }
+    ],
+    '2027-09': [
+      { label: 'शुभ विवाह मुहूर्तः', days: [], note: 'कोई मुहूर्त नहीं (चातुर्मास)' },
+      { label: 'जीर्णोद्धार गृह प्रवेश मुहूर्तः', days: [], note: 'कोई मुहूर्त नहीं (चातुर्मास)' },
+      { label: 'व्यापार प्रारंभ मुहूर्तः', days: [2, 3, 5, 11, 13] }
+    ],
+    '2027-10': [
+      { label: 'शुभ विवाह मुहूर्तः', days: [], note: 'कोई मुहूर्त नहीं (चातुर्मास)' },
+      { label: 'जीर्णोद्धार गृह प्रवेश मुहूर्तः', days: [], note: 'कोई मुहूर्त नहीं (चातुर्मास)' },
+      { label: 'व्यापार प्रारंभ मुहूर्तः', days: [1, 2, 4, 8, 10, 15, 20, 22, 27] }
+    ],
+    '2027-11': [
+      { label: 'शुभ विवाह मुहूर्तः', days: [11, 15, 22, 23, 24, 28, 29, 30] },
+      { label: 'नींव (गृहारंभ) मुहूर्तः', days: [10, 11, 12, 24] },
+      { label: 'जीर्णोद्धार गृह प्रवेश मुहूर्तः', days: [10, 11, 12] },
+      { label: 'व्यापार प्रारंभ मुहूर्तः', days: [1, 5, 8, 10, 12, 18, 24, 26] }
+    ],
+    '2027-12': [
+      { label: 'शुभ विवाह मुहूर्तः', days: [2, 8, 9, 13] },
+      { label: 'नींव (गृहारंभ) मुहूर्तः', days: [2, 3, 9] },
+      { label: 'जीर्णोद्धार गृह प्रवेश मुहूर्तः', days: [2, 3, 9] },
+      { label: 'व्यापार प्रारंभ मुहूर्तः', days: [3, 4, 5, 8, 10] }
+    ]
+  };
+  const PCH_MUHURT_MONTHS_HI = ['जनवरी','फ़रवरी','मार्च','अप्रैल','मई','जून','जुलाई','अगस्त','सितंबर','अक्टूबर','नवंबर','दिसंबर'];
+  let pchMuhurtDatesKey = '';
+  let pchMuhurtSelYmd = '';   // selected local date 'YYYY-MM-DD' (its day gets the blue square)
+  let pchMuhurtViewYm = '';   // month currently shown 'YYYY-MM' (user can move it with the ‹ › buttons)
+  function pchMuhurtShiftYm(ym, dir) {
+    let y = parseInt(ym.slice(0, 4), 10), m = parseInt(ym.slice(5, 7), 10) + dir;
+    if (m < 1) { m = 12; y--; } else if (m > 12) { m = 1; y++; }
+    return y + '-' + (m < 10 ? '0' : '') + m;
+  }
+  function pchMuhurtDraw() {
+    const listEl = document.getElementById('pch-muhurt-dates-list');
+    if (!listEl) return;
+    const ym = pchMuhurtViewYm;
+    const rows = PCH_MUHURT_DATES[ym];
+    const day = (pchMuhurtSelYmd.slice(0, 7) === ym) ? parseInt(pchMuhurtSelYmd.slice(8, 10), 10) : 0;
+    const mi = parseInt(ym.slice(5, 7), 10) - 1;
+    document.getElementById('pch-muhurt-dates-month').textContent = PCH_MUHURT_MONTHS_HI[mi] + ' ' + ym.slice(0, 4);
+    const prevB = document.getElementById('pch-muhurt-prev'), nextB = document.getElementById('pch-muhurt-next');
+    if (prevB) prevB.disabled = !PCH_MUHURT_DATES[pchMuhurtShiftYm(ym, -1)];
+    if (nextB) nextB.disabled = !PCH_MUHURT_DATES[pchMuhurtShiftYm(ym, 1)];
+    listEl.innerHTML = rows.map(function (r) {
+      return '<div class="pch-mdate-row"><span class="pch-mdate-label">' + r.label + '</span> ' +
+        '<span class="pch-mdate-days">' +
+        (r.days.length
+          ? r.days.map(function (d) { return '<span class="pch-mdate-day' + (d === day ? ' is-today' : '') + '">' + d + '</span>'; }).join(', ')
+          : (r.note || '')) +
+        '</span></div>';
+    }).join('');
+  }
+  window.pchMuhurtNav = function (dir) {
+    const next = pchMuhurtShiftYm(pchMuhurtViewYm, dir);
+    if (!PCH_MUHURT_DATES[next]) return;
+    pchMuhurtViewYm = next;
+    pchMuhurtDraw();
+  };
+  // ymd = 'YYYY-MM-DD' of the selected local date; its month is shown first and the selected day is highlighted.
+  function pchRenderMuhurtDates(ymd) {
+    if (ymd === pchMuhurtDatesKey) return;
+    const sec = document.getElementById('pch-muhurt-dates-section');
+    const listEl = document.getElementById('pch-muhurt-dates-list');
+    if (!sec || !listEl) return;
+    pchMuhurtDatesKey = ymd;
+    pchMuhurtSelYmd = ymd;
+    const ym = ymd.slice(0, 7);
+    if (!PCH_MUHURT_DATES[ym]) { sec.style.display = 'none'; return; }
+    pchMuhurtViewYm = ym;   // selecting another date always brings back that date's month
+    pchMuhurtDraw();
+    sec.style.display = '';
+  }
   window.showChoghadiyaFull = function showChoghadiyaFull() {
     pchRenderChoghadiyaFull();
     showSecondaryPage('page-choghadiya');
@@ -922,7 +1065,7 @@
     pchInitVisibilityWatch();
     if (PCH.lat === null) {
       document.getElementById('pch-content').style.display = 'none';
-      document.getElementById('pch-location-section').style.display = 'none';
+      pchHideLocationSection();
       pchAutoFetchGPS();
     } else {
       pchRunCalculation();
@@ -931,11 +1074,20 @@
     pchStartTimers();
   };
 
+  // Hides the location section and, if it was open as the popup, closes the popup and unlocks page scrolling.
+  function pchHideLocationSection() {
+    const sec = document.getElementById('pch-location-section');
+    if (sec) { sec.style.display = 'none'; sec.classList.remove('is-popup'); }
+    document.body.style.overflow = '';
+  }
+  window.pchCloseLocationPopup = function () {
+    pchHideLocationSection();
+    pchSetStatus('');
+  };
   function pchShowLocationBar() {
     const bar = document.getElementById('pch-badle-bar');
-    const sec = document.getElementById('pch-location-section');
     if (bar) bar.style.display = 'flex';
-    if (sec) sec.style.display = 'none';
+    pchHideLocationSection();
     pchShowGpsLoading(false);
   }
 
@@ -988,17 +1140,17 @@
     if (PCH.lat !== null) { pchBusy.show('calc'); pchRunCalculation(); }
   };
 
+  // Opens the location / date-time picker as a popup over the panchang (like the profile popup).
+  // The panchang stays visible behind it; the popup closes by itself as soon as a new calculation starts.
   window.pchOpenLocationSelector = function() {
-    const bar = document.getElementById('pch-badle-bar');
-    if (bar) bar.style.display = 'none';
-    // Hide the panchang content while the user is picking a new
-    // location/date-time — it reappears automatically once
-    // pchRunCalculation() finishes for the newly chosen values.
-    const content = document.getElementById('pch-content');
-    if (content) content.style.display = 'none';
+    const sec = document.getElementById('pch-location-section');
+    if (sec) sec.classList.add('is-popup');
+    document.body.style.overflow = 'hidden';
     pchRevealLocationSection(true);
     pchPrefillDateTimeInputs();
     pchSetStatus('');
+    const sheet = sec && sec.querySelector('.pch-loc-sheet');
+    if (sheet) sheet.scrollTop = 0;
   };
 
   function pchSetStatus(msg, isError) {
@@ -2422,8 +2574,8 @@
     [2027, 12, 25, 'क्रिसमस']
   ];
   const HOL_CBSE_RANGES = [
-    [2026, 12, 23, 31, 'शीतकालीन अवकाश'],
-    [2027, 1, 1, 2, 'शीतकालीन अवकाश'],
+    [2026, 12, 31, 31, 'शीतकालीन अवकाश'],
+    [2027, 1, 1, 10, 'शीतकालीन अवकाश'],
     [2027, 5, 3, 31, 'ग्रीष्मावकाश (अनुमानित)'],
     [2027, 6, 1, 20, 'ग्रीष्मावकाश (अनुमानित)'],
     [2027, 10, 7, 16, 'शरदकालीन / दशहरा अवकाश (अनुमानित)'],
@@ -2642,13 +2794,14 @@
     }
     function addEvent(dateUTCms, name, cats, fromRJList, vratLabel) {
       if (dateUTCms < todayUTC || dateUTCms > cutoffUTC) return;
+      if (calcMode && name === 'दीपावली अवकाश') return; // Diwali vacation spans are shown in the Holiday list only, not in the calendar
       if (calcMode && !vratLabel && computedLunar.some(c => c.name === name && Math.abs(c.ms - dateUTCms) === 86400000)) return;
       if (isRJ && !fromRJList) { cats = cats.filter(c => c !== 'state'); if (!cats.length) return; }
       const dObj = new Date(dateUTCms);
       const key = dObj.getUTCFullYear() + '-' + dObj.getUTCMonth() + '-' + dObj.getUTCDate(); // ONE row per date
       if (!merged[key]) merged[key] = { dateObj: dObj, name: name, cats: new Set(), entries: [], ruleLabels: [] };
       cats.forEach(c => merged[key].cats.add(c));
-      merged[key].entries.push({ name: name, ncats: cats.length });
+      merged[key].entries.push({ name: name, ncats: cats.length, cats: cats.slice() });
       if (vratLabel) merged[key].ruleLabels.push(vratLabel);
     }
 
@@ -2753,6 +2906,14 @@
         title = best.name;
       }
       ev.name = title;
+      // Second / fourth Saturday: if it is not already the row's title, keep it as a note (with the bodies that observe it)
+      const sat = {};
+      ev.entries.forEach(e => {
+        if (e.name.indexOf('शनिवार') === -1 || title.indexOf(e.name) !== -1) return;
+        const s = sat[e.name] = sat[e.name] || new Set();
+        (e.cats || []).forEach(c => s.add(c));
+      });
+      ev.satNotes = Object.keys(sat).map(n => ({ name: n, cats: sat[n] }));
       return ev;
     });
     list.sort((a, b) => a.dateObj - b.dateObj);
@@ -2763,13 +2924,18 @@
     return HOL_CAT_ORDER.filter(c => catsSet.has(c)).map(c => '<span class="hol-chip">' + HOL_CAT_LABEL[c] + '</span>').join('');
   }
 
+  // Title shown in the holiday list: the row's title, then ", द्वितीय शनिवार" when a 2nd/4th Saturday holiday falls on the same date
+  function pchHolidayTitle(ev) {
+    return ev.name + (ev.satNotes || []).map(n => ', ' + n.name).join('');
+  }
+
   function pchHolidayItemHTML(ev) {
     const dObj = ev.dateObj;
     const dayNum = dObj.getUTCDate();
     const monthShort = MONTH_NAMES_HI[dObj.getUTCMonth()].slice(0, 3);
     return '<div class="hol-item">'
       + '<div class="hol-date-badge"><span class="vrat-date-num">' + dayNum + '</span><span class="vrat-date-mon">' + monthShort + '</span></div>'
-      + '<div class="hol-info"><div class="hol-name">' + ev.name + pchEvTag(ev) + '</div><div class="hol-chips">' + pchHolidayChipsHTML(ev.cats) + '</div></div>'
+      + '<div class="hol-info"><div class="hol-name">' + pchHolidayTitle(ev) + pchEvTag(ev) + '</div><div class="hol-chips">' + pchHolidayChipsHTML(ev.cats) + '</div></div>'
       + '</div>';
   }
 
@@ -2914,8 +3080,9 @@
     const days = {}; // day-of-month -> { vrat: label|'', govt: bool, hol: [{name, cats}] }
     const slot = function (d) { return days[d] || (days[d] = { vrat: '', govt: false, hol: [] }); };
     // start one day early so the builder sees the previous day's tithi when judging a festival at the month edge
-    const prev = new Date(Date.UTC(y, m, 0));
-    const vrat = pchBuildVratTyoharList(dim + 1, { y: prev.getUTCFullYear(), m: prev.getUTCMonth(), d: prev.getUTCDate() });
+    // (2 days early / 2 days late, so a festival just outside the month can still be matched against a holiday on the edge)
+    const prev = new Date(Date.UTC(y, m, -1));
+    const vrat = pchBuildVratTyoharList(dim + 3, { y: prev.getUTCFullYear(), m: prev.getUTCMonth(), d: prev.getUTCDate() });
     vrat.forEach(function (ev) {
       const l = ev.dateObj;                                  // vrat dateObj = UTC midnight of the local date
       if (l.getUTCFullYear() !== y || l.getUTCMonth() !== m) return;
@@ -2923,17 +3090,36 @@
       s.vrat = ev.label;
     });
     // holiday dateObj = UTC midnight of the local date (same convention)
-    pchBuildPublicHolidays(dim - 1, { y: y, m: m, d: 1 }, vrat, { calc: true }).forEach(function (ev) {
+    pchBuildPublicHolidays(dim - 1, { y: y, m: m, d: 1 }, vrat).forEach(function (ev) { // published-list dates (red marks); tithi festival names still come from the Panchang (s.vrat)
       const s = slot(ev.dateObj.getUTCDate());
-      s.hol.push({ name: ev.name, cats: ev.cats });
-      if (ev.cats.has('central') || ev.cats.has('state')) s.govt = true; // central / state govt holiday → red date, like Sunday
+      // Calendar shows ONLY Central / State government holidays (other bodies' holidays stay in the Holiday list)
+      if (!(ev.cats.has('central') || ev.cats.has('state'))) return;
+      // Panchang is the authority for festival dates: if the same festival is dated on a different day by the
+      // Panchang (within ±2 days), this day stays red (govt holiday) but does NOT carry the festival's label.
+      const hd = ev.dateObj.getTime();
+      const hidden = ev.entries.length > 0 && ev.entries.every(function (en) {
+        const toks = pchCalHolTokens(en.name);
+        if (!toks.length) return false;
+        return vrat.some(function (v) {
+          const diff = Math.round((v.dateObj.getTime() - hd) / 86400000);
+          return diff !== 0 && Math.abs(diff) <= 2 && toks.some(function (t) { return v.label.indexOf(t) !== -1; });
+        });
+      });
+      s.hol.push({ name: ev.name, hidden: hidden, cats: new Set(['central', 'state'].filter(c => ev.cats.has(c))) });
+      s.govt = true; // central / state govt holiday → red date, like Sunday
     });
     return (pchCal.monthCache[key] = { days: days });
   }
-  // Short festival text for a cell: the vrat/tyohar if any, else the first holiday.
+  // Significant words of a holiday name, used to find the same festival in the Panchang's own list.
+  const PCH_CAL_HOL_STOP = { 'अवकाश':1, 'जयंती':1, 'दिवस':1, 'पूजा':1, 'व्रत':1, 'गुरु':1, 'शनिवार':1, 'रविवार':1, 'द्वितीय':1, 'चतुर्थ':1, 'अनुमानित':1, 'उत्सव':1, 'नहीं':1 };
+  function pchCalHolTokens(name) {
+    return String(name).replace(/[()\/\-—,.।]/g, ' ').split(/\s+/).filter(function (t) { return t.length > 2 && !PCH_CAL_HOL_STOP[t]; });
+  }
+  // Short festival text for a cell: the vrat/tyohar if any, else the first holiday whose date agrees with the Panchang.
   function pchCalFestText(s) {
     if (!s) return '';
-    const t = s.vrat || (s.hol.length ? s.hol[0].name : '');
+    const shown = s.hol.filter(function (h) { return !h.hidden; });
+    const t = s.vrat || (shown.length ? shown[0].name : '');
     return t.replace(/\s*\([^)]*\)/g, '').split(', ')[0] || '';
   }
   // Short masa names for the calendar cells
@@ -3037,7 +3223,7 @@
   function pchCalUpdateInfo() {
     if (!pchCal.open || !pchCal.sel) return;
     const s = pchCal.sel, tz = pchCalTz(), wd = WEEKDAY_NAMES[new Date(Date.UTC(s.y, s.m, s.d)).getUTCDay()];
-    document.getElementById('pch-cal-date').textContent = wd + ', ' + s.d + ' ' + MONTH_NAMES_HI[s.m] + ' ' + s.y;
+    document.getElementById('pch-cal-date').textContent = s.d + ' ' + MONTH_NAMES_HI[s.m] + ' ' + s.y + ', ' + wd;
     const inp = document.getElementById('pch-cal-time-input');
     let base = null, note = '', isSunrise = false, isLive = false;
     if (pchCal.loading) {
@@ -3052,11 +3238,7 @@
         note = si.approx ? 'अनुमानित सूर्योदय — Open-Meteo से पुष्टि नहीं हो सकी' : 'Open-Meteo से पुष्ट';
       }
     } else { base = new Date(); isLive = true; }
-    inp.disabled = pchCal.loading;
-    if (base && document.activeElement !== inp) {
-      const l = new Date(base.getTime() + tz * 60000);
-      inp.value = pad2(l.getUTCHours()) + ':' + pad2(l.getUTCMinutes());
-    }
+    if (base) inp.textContent = fmtTime(base, tz);   // read-only text, e.g. 8:15 AM
     document.getElementById('pch-cal-time-note').textContent = note;
     [['pch-cal-btn-sunrise', isSunrise], ['pch-cal-btn-live', isLive]].forEach(function (p) {
       const b = document.getElementById(p[0]);
@@ -3064,7 +3246,7 @@
     });
     const isGps = PCH.name === 'वर्तमान GPS स्थान';
     const place = (PCH.name || '—') + (PCH.state ? ', ' + PCH.state : '');
-    document.getElementById('pch-cal-loc').innerHTML = '<span>' + place + '</span><small>मोड: ' + (isGps ? 'GPS' : 'Manual') + '</small>';
+    document.getElementById('pch-cal-loc').innerHTML = '<span class="pch-gt-placename">' + place + '</span><em class="pch-gt-mode">' + (isGps ? 'GPS' : 'Manual') + '</em>';
   }
 
   // Tap on a date: today → back to Live; any other date → confirm that
@@ -3399,6 +3581,10 @@
         pchLastChogh = buildChoghadiya(sunrise, sunset, nextSunrise, weekdayIdx, prevSunset);
         pchRenderChoghadiya();
         pchRenderChoghadiyaFull();
+      });
+
+      pchSafeSection('muhurt-dates', 'pch-muhurt-dates-list', function () {
+        pchRenderMuhurtDates(ymdAtOffset(today, tz));
       });
 
       // Both lists depend only on the local calendar date, the time zone, the
