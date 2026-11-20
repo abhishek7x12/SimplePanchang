@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" href="favicon.png">
 <link rel="shortcut icon" href="favicon.png" type="image/png">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Figtree:wght@400;500;600;700&family=Tiro+Devanagari+Hindi&family=Hind:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20261119g">
+<link rel="stylesheet" href="styles.css?v=20261120b">
 </head>
 <body>
 
@@ -67,8 +67,12 @@
 
       <!-- Location selection (hidden by default; shown automatically only
            if the silent GPS auto-fetch on page-open fails) -->
-      <div class="about-section" id="pch-location-section" style="display:none;">
-        <div class="about-section-title">स्थान चुनें (Location)</div>
+      <div class="about-section" id="pch-location-section" style="display:none;" onclick="if(event.target===this &amp;&amp; this.classList.contains('is-popup'))pchCloseLocationPopup()">
+        <div class="pch-loc-sheet">
+        <div class="pch-loc-head">
+          <div class="about-section-title">स्थान चुनें (Location)</div>
+          <button type="button" class="profile-modal-close pch-loc-close" onclick="pchCloseLocationPopup()" aria-label="बंद करें">×</button>
+        </div>
         <div class="about-card" id="pch-location-card">
           <div class="pch-loc-btns" id="pch-loc-btns">
             <button class="pch-loc-btn" onclick="pchUseGPS()">📍 वर्तमान GPS स्थान</button>
@@ -99,6 +103,7 @@
           <div style="margin-top:14px; font-size:12px; color:var(--ink-soft); line-height:1.5; border-top:1px dashed var(--border); padding-top:14px;">
             <strong>नोट:</strong> आपके वर्तमान स्थान से पंचांग की गणना और परिणाम बदल जाते हैं। सटीक पंचांग जानने के लिए हमेशा अपनी GPS location का ही उपयोग करें।
           </div>
+        </div>
         </div>
       </div>
 
@@ -156,25 +161,6 @@
           </div>
         </div>
 
-        <!-- Muhurat / Kaal -->
-        <div class="about-section">
-          <div class="about-section-title">शुभ-अशुभ</div>
-          <div class="about-card">
-            <div class="pch-grid" id="pch-muhurt-grid"></div>
-          </div>
-        </div>
-
-        <!-- Choghadiya -->
-        <div class="about-section">
-          <div class="about-section-head">
-            <div class="about-section-title"><span id="pch-chogh-title">चौघड़िया</span></div>
-            <button type="button" class="sec-more-btn sec-more-btn--saffron" onclick="showChoghadiyaFull()">सम्पूर्ण चौघड़िया देखें <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
-          </div>
-          <div class="about-card">
-            <div id="pch-choghadiya-list"></div>
-          </div>
-        </div>
-
         <!-- Sun-Moon Time -->
         <div class="about-section">
           <div class="about-section-title">सूर्य-चंद्र समय</div>
@@ -199,6 +185,40 @@
               <div class="pch-sunmoon-label">चंद्रास्त</div>
               <div class="pch-sunmoon-time" id="pch-moonset-summary"></div>
             </div>
+          </div>
+        </div>
+
+        <!-- Choghadiya -->
+        <div class="about-section">
+          <div class="about-section-head">
+            <div class="about-section-title"><span id="pch-chogh-title">चौघड़िया</span></div>
+            <button type="button" class="sec-more-btn sec-more-btn--saffron" onclick="showChoghadiyaFull()">सम्पूर्ण चौघड़िया देखें <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2.4" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></button>
+          </div>
+          <div class="about-card">
+            <div id="pch-choghadiya-list"></div>
+          </div>
+        </div>
+
+        <!-- Muhurat / Kaal -->
+        <div class="about-section">
+          <div class="about-section-title">शुभ-अशुभ</div>
+          <div class="about-card">
+            <div class="pch-grid" id="pch-muhurt-grid"></div>
+          </div>
+        </div>
+
+        <!-- Muhurt (auspicious dates of the month for particular works) -->
+        <div class="about-section" id="pch-muhurt-dates-section" style="display:none;">
+          <div class="about-section-head">
+            <div class="about-section-title">मुहूर्त</div>
+            <div class="pch-mdate-nav">
+              <button type="button" class="pch-cal-nav pch-mdate-navbtn" id="pch-muhurt-prev" onclick="pchMuhurtNav(-1)" aria-label="पिछला महीना">‹</button>
+              <span class="pch-mdate-month" id="pch-muhurt-dates-month"></span>
+              <button type="button" class="pch-cal-nav pch-mdate-navbtn" id="pch-muhurt-next" onclick="pchMuhurtNav(1)" aria-label="अगला महीना">›</button>
+            </div>
+          </div>
+          <div class="about-card">
+            <div id="pch-muhurt-dates-list"></div>
           </div>
         </div>
 
@@ -228,12 +248,25 @@
           </div>
         </div>
 
-        <!-- Date / time / place (moved below Public Holidays) -->
+        <!-- Geo & Timestamp: date + day and time on one line, location below (read-only; time is the only editable field) -->
         <div class="about-section">
-          <div class="about-card pch-cal-info">
-            <div class="pch-cal-info-row"><span class="pch-cal-info-ico">📅</span><div class="pch-cal-info-txt" id="pch-cal-date"></div><button type="button" class="pch-cal-chip" onclick="pchCalScrollToCalendar()">दिनांक बदलें</button></div>
-            <div class="pch-cal-info-row pch-cal-time-row"><span class="pch-cal-info-ico">🕐</span><div class="pch-cal-info-txt"><input type="time" id="pch-cal-time-input" class="pch-cal-time-input" onclick="pchCalOpenTimePicker(this)" onchange="pchCalTimeChanged(this.value)" aria-label="समय चुनें"><small id="pch-cal-time-note"></small></div><div class="pch-cal-actions pch-cal-actions--inline"><button type="button" class="pch-cal-chip" id="pch-cal-btn-sunrise" aria-pressed="false" onclick="pchCalSetSunrise()">🌅 सूर्योदय</button><button type="button" class="pch-cal-chip" id="pch-cal-btn-live" aria-pressed="true" onclick="pchCalLive()">🔴 अभी</button></div></div>
-            <div class="pch-cal-info-row pch-cal-place"><span class="pch-cal-info-ico">📍</span><div class="pch-cal-info-txt" id="pch-cal-loc"></div><button type="button" class="pch-cal-chip" onclick="pchOpenLocationSelector()">स्थान बदलें</button></div>
+          <div class="about-section-title">Geo &amp; Timestamp</div>
+          <div class="about-card pch-gt">
+            <div class="pch-gt-stamp">
+              <div class="pch-gt-field pch-gt-field--date">
+                <span class="pch-gt-ico" aria-hidden="true">📅</span>
+                <div class="pch-gt-val" id="pch-cal-date"></div>
+              </div>
+              <div class="pch-gt-field pch-gt-field--time">
+                <span class="pch-gt-ico" aria-hidden="true">🕐</span>
+                <span class="pch-gt-val pch-gt-time" id="pch-cal-time-input"></span>
+              </div>
+            </div>
+            <div class="pch-gt-note" id="pch-cal-time-note"></div>
+            <div class="pch-gt-place">
+              <span class="pch-gt-ico" aria-hidden="true">📍</span>
+              <div class="pch-gt-val pch-gt-placeval" id="pch-cal-loc"></div>
+            </div>
             <div class="pch-cal-calc-note"><strong>Note:</strong> पंचांग की गणना चुने गए समय, दिनांक व स्थान के आधार पर की जाती है।</div>
           </div>
         </div>
@@ -396,8 +429,8 @@
       <div class="about-section">
         <div class="about-section-title">Version</div>
         <div class="about-card">
-          <p><strong>Version 3.2.0</strong></p>
-          <p>Released on 19 November 2026</p>
+          <p><strong>Version 3.2.8</strong></p>
+          <p>Released on 20 November 2026</p>
         </div>
       </div>
 
@@ -589,7 +622,7 @@
     </div>
   </div>
 
-<script src="panchang.js?v=20261119l"></script>
+<script src="panchang.js?v=20261120b"></script>
 <script src="tour.js?v=20261116d"></script>
 </body>
 </html>
