@@ -1061,7 +1061,6 @@
 
   window.showPanchang = function() {
     showSecondaryPage('page-panchang');
-    document.getElementById('pch-manual-entry').style.display = 'none';
     pchInitVisibilityWatch();
     if (PCH.lat === null) {
       document.getElementById('pch-content').style.display = 'none';
@@ -1079,7 +1078,9 @@
     const sec = document.getElementById('pch-location-section');
     if (sec) { sec.style.display = 'none'; sec.classList.remove('is-popup'); }
     document.body.style.overflow = '';
+    lmReset();
   }
+  // Cancel: outside tap, × or Esc. Whatever was picked in the popup is discarded.
   window.pchCloseLocationPopup = function () {
     pchHideLocationSection();
     pchSetStatus('');
@@ -1087,67 +1088,27 @@
   function pchShowLocationBar() {
     const bar = document.getElementById('pch-badle-bar');
     if (bar) bar.style.display = 'flex';
-    pchHideLocationSection();
+    // A silent background refresh (every minute) must not close the picker while someone is
+    // choosing in it; the popup closes only through OK / cancel. The first-open inline
+    // variant still hides as soon as a calculation starts.
+    const sec = document.getElementById('pch-location-section');
+    if (!(sec && sec.classList.contains('is-popup'))) pchHideLocationSection();
     pchShowGpsLoading(false);
   }
-
-  // Reads the (optional) date/time fields in the location selector and
-  // stores them as an absolute-instant override for the panchang
-  // calculation. Leaving either field blank — or leaving them exactly at
-  // their prefilled "now" values via the "अभी (Live)" button — reverts to
-  // live time. Called right before a location is actually chosen so
-  // whatever the user typed is picked up automatically.
-  function pchCaptureDateTimeInputs() {
-    const block = document.getElementById('pch-datetime-block');
-    if (block && block.style.display === 'none') return; // not shown to the user — keep using live time
-    const dEl = document.getElementById('pch-dt-date');
-    const tEl = document.getElementById('pch-dt-time');
-    if (!dEl || !tEl || !dEl.value || !tEl.value) { return; }
-    const dt = new Date(dEl.value + 'T' + tEl.value + ':00');
-    if (isNaN(dt.getTime())) { return; }
-    PCH.customDateTime = dt;
-  }
-
-  // Fills the date/time inputs with whatever is currently active — the
-  // custom override if one is set, otherwise the live current time —
-  // whenever the location selector is opened.
-  function pchPrefillDateTimeInputs() {
-    const dEl = document.getElementById('pch-dt-date');
-    const tEl = document.getElementById('pch-dt-time');
-    if (!dEl || !tEl) return;
-    const base = PCH.customDateTime || new Date();
-    const pad = (n) => String(n).padStart(2, '0');
-    dEl.value = base.getFullYear() + '-' + pad(base.getMonth() + 1) + '-' + pad(base.getDate());
-    tEl.value = pad(base.getHours()) + ':' + pad(base.getMinutes());
-  }
-
-  // "इसी समय हेतु लागू करें" — apply a custom timestamp without touching
-  // the already-selected location.
-  window.pchApplyDateTimeOnly = function() {
-    pchCaptureDateTimeInputs();
-    if (PCH.lat === null) {
-      pchSetStatus('कृपया पहले ऊपर से कोई स्थान चुनें।', true);
-      return;
-    }
-    pchBusy.show('calc');
-    pchRunCalculation();
-  };
 
   // "अभी (Live)" — clear any custom override and go back to live time.
   window.pchResetToLiveDateTime = function() {
     PCH.customDateTime = null;
-    pchPrefillDateTimeInputs();
     if (PCH.lat !== null) { pchBusy.show('calc'); pchRunCalculation(); }
   };
 
-  // Opens the location / date-time picker as a popup over the panchang (like the profile popup).
-  // The panchang stays visible behind it; the popup closes by itself as soon as a new calculation starts.
+  // Opens the location · date · time picker as a popup over the panchang (like the profile popup).
+  // The panchang stays visible behind it. Nothing is applied until OK; outside tap / × / Esc cancels.
   window.pchOpenLocationSelector = function() {
     const sec = document.getElementById('pch-location-section');
     if (sec) sec.classList.add('is-popup');
     document.body.style.overflow = 'hidden';
-    pchRevealLocationSection(true);
-    pchPrefillDateTimeInputs();
+    pchRevealLocationSection();
     pchSetStatus('');
     const sheet = sec && sec.querySelector('.pch-loc-sheet');
     if (sheet) sheet.scrollTop = 0;
@@ -1164,12 +1125,10 @@
     if (el) el.style.display = show ? 'flex' : 'none';
   }
 
-  function pchRevealLocationSection(showDateTime) {
+  function pchRevealLocationSection() {
     const sec = document.getElementById('pch-location-section');
     if (sec) sec.style.display = '';
-    const dtBlock = document.getElementById('pch-datetime-block');
-    if (dtBlock) dtBlock.style.display = showDateTime ? '' : 'none';
-    pchPrefillDateTimeInputs();
+    lmInit();
   }
 
   // ── GPS location: due-process flow ──
@@ -1182,22 +1141,87 @@
   //    is revealed so the user can retry GPS or enter a city manually.
 
   function pchGpsFallbackHint() {
-    return ' कृपया नीचे शहर मैन्युअल रूप से लिखें।';
+    return PCH.lat === null ? '' : ' कृपया नीचे शहर मैन्युअल रूप से लिखें।';   // no manual entry on the initial GPS gate
   }
 
-  const PCH_GPS_DENIED_MSG = 'GPS location की अनुमति अवरुद्ध है। कृपया अनुमति देने के लिए मोबाइल की सेटिंग्स में जाएं और एप्लिकेशन की GPS location को अनुमति दें। अथवा नीचे शहर मैन्युअल रूप से लिखें।';
+  const PCH_GPS_GATE_DENIED_MSG = 'GPS location की अनुमति अवरुद्ध है। कृपया मोबाइल/ब्राउज़र की सेटिंग्स में जाकर इस ऐप की Location को अनुमति दें, फिर वापस आकर “दोबारा कोशिश करें” दबाएँ, या नीचे से जयपुर, राजस्थान का पंचांग देखें।';
+  const PCH_GPS_DENIED_MSG_POPUP = 'GPS location की अनुमति अवरुद्ध है। कृपया अनुमति देने के लिए मोबाइल की सेटिंग्स में जाएं और एप्लिकेशन की GPS location को अनुमति दें। अथवा नीचे शहर मैन्युअल रूप से लिखें।';
 
   function pchFailGps(msg, wasAuto) {
     pchBusy.hide(true);
     if (wasAuto) pchShowGpsLoading(false);
-    pchRevealLocationSection(false);
+    // Initial open, no location yet -> GPS gate (no manual entry). Once a Panchang exists the gate is never used.
+    if (PCH.lat === null) { pchShowGpsGate(msg); return; }
+    pchRevealLocationSection();
     pchSetStatus(msg, true);
   }
+
+  /* ── GPS permission modal (full-screen; only on app open, until a location exists) ──
+     Flow: consent checkbox -> GPS, or "continue with Jaipur, Rajasthan" as the fallback. */
+  let pchGateBound = false, pchGateTried = false;
+  function pchShowGpsGate(msg) {
+    const g = document.getElementById('pch-gps-gate'); if (!g) return;
+    g.hidden = false;
+    document.body.style.overflow = 'hidden';
+    document.getElementById('gps-gate-err').textContent = msg || '';
+    const btn = document.getElementById('gps-gate-btn'), alt = document.getElementById('gps-jaipur-btn');
+    btn.disabled = false; alt.disabled = false;
+    btn.textContent = msg ? 'दोबारा कोशिश करें' : 'हाँ, सटीक पंचांग दिखाएँ';
+    window.pchGateConsentChanged();
+    if (!pchGateBound) {
+      pchGateBound = true;
+      // Coming back from the phone/browser settings after a failed attempt: try again automatically.
+      document.addEventListener('visibilitychange', function () {
+        const gg = document.getElementById('pch-gps-gate');
+        if (document.visibilityState === 'visible' && gg && !gg.hidden && PCH.lat === null && pchGateTried && !document.getElementById('gps-gate-btn').disabled) pchGateStart();
+      });
+    }
+    try { document.getElementById('gps-consent-cb').focus(); } catch (e) { /* ignore */ }
+  }
+  function pchHideGpsGate() {
+    const g = document.getElementById('pch-gps-gate');
+    if (g) g.hidden = true;
+    document.body.style.overflow = '';
+  }
+  window.pchGateConsentChanged = function () {
+    const cb = document.getElementById('gps-consent-cb'), btn = document.getElementById('gps-gate-btn');
+    btn.setAttribute('aria-disabled', cb.checked ? 'false' : 'true');
+    document.getElementById('gps-consent').classList.remove('need');
+  };
+  function pchGateStart() {
+    const btn = document.getElementById('gps-gate-btn');
+    btn.disabled = true;
+    btn.textContent = 'स्थान पता किया जा रहा है…';
+    document.getElementById('gps-gate-err').textContent = '';
+    pchGateTried = true;
+    pchRequestGPS(true);
+  }
+  // "GPS चालू करें": only after the consent box is ticked.
+  window.pchGateRetry = function () {
+    const cb = document.getElementById('gps-consent-cb');
+    if (!cb.checked) {
+      const row = document.getElementById('gps-consent');
+      row.classList.remove('need'); void row.offsetWidth; row.classList.add('need');
+      try { cb.focus(); } catch (e) { /* ignore */ }
+      return;
+    }
+    pchGateStart();
+  };
+  // Fallback: no GPS -> Jaipur, Rajasthan, so the Panchang can still be calculated.
+  window.pchGateUseJaipur = function () {
+    PCH.lat = 26.9124; PCH.lon = 75.7873; PCH.name = 'Jaipur'; PCH.state = 'Rajasthan';
+    PCH.tzOffsetMin = 330; PCH.customDateTime = null;
+    pchHideGpsGate();
+    pchSetStatus('');
+    pchBusy.show('sun', 'Jaipur के लिए पंचांग तैयार हो रहा है');
+    pchRunCalculation();
+  };
 
   function pchHandleGpsSuccess(pos, wasAuto) {
     PCH.lat = pos.coords.latitude;
     PCH.lon = pos.coords.longitude;
     PCH.name = 'वर्तमान GPS स्थान';
+    pchHideGpsGate();
     // (No separate timezone-resolution request here — pchRunCalculation()'s
     // own sun-times fetch resolves PCH.tzOffsetMin from the same Open-Meteo
     // endpoint a moment later, so a dedicated call first would just be a
@@ -1229,18 +1253,14 @@
     } catch (e) { /* offline / blocked: leave state blank */ }
   }
 
+  function pchGpsErrorMsg(err) {
+    if (err && err.code === err.PERMISSION_DENIED) return PCH.lat === null ? PCH_GPS_GATE_DENIED_MSG : PCH_GPS_DENIED_MSG_POPUP;
+    if (err && err.code === err.POSITION_UNAVAILABLE) return 'स्थान की जानकारी नहीं मिल पाई। कृपया अपने डिवाइस की लोकेशन सेवा (GPS) चालू करें और दोबारा प्रयास करें।' + pchGpsFallbackHint();
+    if (err && err.code === err.TIMEOUT) return 'स्थान पता करने में अधिक समय लग रहा है।' + pchGpsFallbackHint();
+    return 'GPS स्थान प्राप्त नहीं हो सका।' + pchGpsFallbackHint();
+  }
   function pchHandleGpsError(err, wasAuto) {
-    let msg;
-    if (err && err.code === err.PERMISSION_DENIED) {
-      msg = PCH_GPS_DENIED_MSG;
-    } else if (err && err.code === err.POSITION_UNAVAILABLE) {
-      msg = 'स्थान की जानकारी नहीं मिल पाई। कृपया अपने डिवाइस की लोकेशन सेवा (GPS) चालू करें और दोबारा प्रयास करें।' + pchGpsFallbackHint();
-    } else if (err && err.code === err.TIMEOUT) {
-      msg = 'स्थान पता करने में अधिक समय लग रहा है।' + pchGpsFallbackHint();
-    } else {
-      msg = 'GPS स्थान प्राप्त नहीं हो सका।' + pchGpsFallbackHint();
-    }
-    pchFailGps(msg, wasAuto);
+    pchFailGps(pchGpsErrorMsg(err), wasAuto);
   }
 
   // wasAuto = true when this was the silent attempt on page-open (loading
@@ -1279,64 +1299,364 @@
     pchBusy.show('gps');
     pchShowGpsLoading(true);
     if (pchGpsUnavailable(true)) return;
+    // No native prompt before the user has seen the explanation and consented in our own modal.
+    function askConsent(msg) { pchBusy.hide(true); pchShowGpsLoading(false); pchShowGpsGate(msg || ''); }
     if (navigator.permissions && navigator.permissions.query) {
       navigator.permissions.query({ name: 'geolocation' }).then((status) => {
-        if (status.state === 'denied') {
-          pchFailGps(PCH_GPS_DENIED_MSG, true);
-          return;
-        }
-        // 'granted' or 'prompt' — safe to ask; browser shows native
-        // prompt itself when state is 'prompt'.
-        pchRequestGPS(true);
-      }).catch(() => {
-        // Permissions API not fully supported — fall back to asking directly.
-        pchRequestGPS(true);
-      });
+        status.onchange = function () {   // allowed from settings while the modal is open
+          const gg = document.getElementById('pch-gps-gate');
+          if (status.state === 'granted' && PCH.lat === null && gg && !gg.hidden && !document.getElementById('gps-gate-btn').disabled) pchGateStart();
+        };
+        if (status.state === 'granted') { pchRequestGPS(true); return; }   // already allowed earlier: no modal needed
+        if (status.state === 'denied') { askConsent(PCH_GPS_GATE_DENIED_MSG); return; }
+        askConsent('');                                                    // 'prompt': explain + consent first
+      }).catch(() => askConsent(''));
     } else {
-      pchRequestGPS(true);
+      askConsent('');
     }
   }
 
-  window.pchUseGPS = function() {
-    pchCaptureDateTimeInputs();
-    pchBusy.show('gps');
-    pchRequestGPS(false);
-  };
+  /* ══════════════════════════════════════════════════════════════════
+     LOCATION · DATE · TIME PICKER  (the "Change Location & Time" popup)
+     Three divided parts + OK. Every choice only edits a draft (LM.d);
+     PCH / the calendar are touched only when OK is tapped. Outside tap,
+     × and Esc cancel and drop the draft.
+       d.loc  { lat, lon, name, state, mode:'gps'|'manual', iana?, tz? } | null
+       d.date 'YYYY-MM-DD' (the place's own calendar day)
+       d.mode 'now' | 'sunrise' | 'custom'     d.time 'HH:MM' (custom only)
+     ══════════════════════════════════════════════════════════════════ */
+  const LM = { d: null, initSig: '', bound: false, gpsBusy: false, gpsTok: 0, searchTok: 0, searchTimer: null,
+               results: [], hot: -1, selLabel: '', sunCache: new Map(), sun: null };
+  const LM_GPS_NAME = 'वर्तमान GPS स्थान';
+  const lmEl = function (id) { return document.getElementById(id); };
 
-  window.pchShowManualEntry = function() {
-    document.getElementById('pch-manual-entry').style.display = 'block';
-  };
-
-  window.pchSearchManualLocation = async function() {
-    pchCaptureDateTimeInputs();
-    const val = document.getElementById('pch-manual-input').value.trim();
-    if (!val) { pchSetStatus('कृपया शहर का नाम लिखें।', true); return; }
-    pchSetStatus(val + ' खोजा जा रहा है…');
-    pchBusy.show('search', '“' + val + '” खोजा जा रहा है');
-    await pchGeocode(val);
-  };
-
-  async function pchGeocode(query) {
+  // Offset (minutes east of UTC) of an IANA zone at an instant; null if the zone is unknown.
+  function lmIanaOffset(iana, utcMs) {
     try {
-      const res = await fetch('https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(query) + '&count=10&language=en&format=json', { cache: 'no-store' });
+      const p = {};
+      new Intl.DateTimeFormat('en-US', { timeZone: iana, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' })
+        .formatToParts(new Date(utcMs)).forEach(function (x) { p[x.type] = x.value; });
+      const asUTC = Date.UTC(+p.year, +p.month - 1, +p.day, (+p.hour) % 24, +p.minute, +p.second);
+      return Math.round((asUTC - Math.floor(utcMs / 1000) * 1000) / 60000);
+    } catch (e) { return null; }
+  }
+  // The draft place's UTC offset for a given day (its own zone, not the browser's).
+  function lmTzFor(dateStr) {
+    const l = LM.d && LM.d.loc;
+    if (l && l.iana) {
+      let ms = Date.now();
+      if (dateStr) { const p = dateStr.split('-').map(Number); ms = Date.UTC(p[0], p[1] - 1, p[2], 12); }
+      const o = lmIanaOffset(l.iana, ms);
+      if (o !== null) return o;
+    }
+    if (l && typeof l.tz === 'number') return l.tz;
+    return (PCH && PCH.tzOffsetMin) || 330;
+  }
+  function lmTodayS() { return ymdAtOffset(new Date(), lmTzFor(null)); }
+  function lmHM(date, tz) {
+    const l = new Date(date.getTime() + tz * 60000);
+    return pad2(l.getUTCHours()) + ':' + pad2(l.getUTCMinutes());
+  }
+  function lmFmt12(hm) {
+    const p = hm.split(':').map(Number);
+    return fmtTime(new Date(Date.UTC(2000, 0, 1, p[0], p[1])), 0);
+  }
+  function lmSig() {
+    const d = LM.d;
+    return [d.loc ? d.loc.lat + ',' + d.loc.lon : '', d.date, d.mode, d.mode === 'custom' ? d.time : ''].join('|');
+  }
+  function lmPlaceLabel(loc) {
+    if (loc.mode === 'gps') return LM_GPS_NAME + (loc.state ? ', ' + loc.state : ' (' + loc.lat.toFixed(3) + ', ' + loc.lon.toFixed(3) + ')');
+    return loc.name + (loc.state ? ', ' + loc.state : '');
+  }
+  function lmSetOn(el, on) { el.classList.toggle('is-active', !!on); if (el.tagName === 'BUTTON') el.setAttribute('aria-pressed', on ? 'true' : 'false'); }
+
+  // Forget the draft (popup closed / calculation took over).
+  function lmReset() {
+    LM.d = null; LM.gpsBusy = false; LM.gpsTok++; LM.searchTok++;
+    clearTimeout(LM.searchTimer); LM.results = []; LM.hot = -1; LM.selLabel = '';
+  }
+
+  // Fresh draft from what is currently applied (or an empty one on the very first open).
+  function lmInit() {
+    lmBind();
+    lmReset();
+    const has = PCH.lat !== null, tz = PCH.tzOffsetMin || 330;
+    const loc = has ? { lat: PCH.lat, lon: PCH.lon, name: PCH.name, state: PCH.state || '', mode: PCH.name === LM_GPS_NAME ? 'gps' : 'manual', tz: tz } : null;
+    let date = ymdAtOffset(new Date(), tz), mode = 'now', time = '';
+    if (has && PCH.customDateTime) {
+      date = ymdAtOffset(PCH.customDateTime, tz);
+      const si = pchCal.sunInfo;
+      if (pchCal.followNow) mode = 'now';
+      else if (si && si.sunrise && Math.abs(si.sunrise.getTime() - PCH.customDateTime.getTime()) < 60000) mode = 'sunrise';
+      else { mode = 'custom'; time = lmHM(PCH.customDateTime, tz); }
+    }
+    LM.d = { loc: loc, date: date, mode: mode, time: time };
+    LM.initSig = lmSig();
+    const inp = lmEl('lm-search-input');
+    LM.selLabel = (loc && loc.mode === 'manual') ? lmPlaceLabel(loc) : '';
+    inp.value = LM.selLabel;
+    lmHideResults();
+    lmRender();
+    lmEnsureSunrise();
+  }
+
+  function lmRender() {
+    const d = LM.d; if (!d) return;
+    const loc = d.loc;
+    // ── 1 · place
+    const lv = lmEl('lm-loc-val');
+    lv.textContent = loc ? lmPlaceLabel(loc) : 'अभी चुना नहीं गया';
+    lv.classList.toggle('is-empty', !loc);
+    const gps = lmEl('lm-gps');
+    lmSetOn(gps, !!loc && loc.mode === 'gps' && !LM.gpsBusy);
+    gps.classList.toggle('is-busy', LM.gpsBusy);
+    const picked = !!loc && loc.mode === 'manual' && lmEl('lm-search-input').value.trim() === LM.selLabel && !!LM.selLabel;
+    lmEl('lm-search').classList.toggle('is-selected', picked);
+    // ── 2 · date
+    const tz = lmTzFor(d.date), today = lmTodayS(), isToday = d.date === today;
+    const dEl = lmEl('lm-date');
+    dEl.min = new Date(pchCalMinUTC()).toISOString().slice(0, 10);
+    dEl.max = new Date(pchCalMaxUTC()).toISOString().slice(0, 10);
+    dEl.value = d.date;
+    lmSetOn(lmEl('lm-today'), isToday);
+    lmSetOn(dEl, !isToday);
+    const dp = d.date.split('-').map(Number);
+    lmEl('lm-date-val').textContent = dp[2] + ' ' + MONTH_NAMES_HI[dp[1] - 1] + ' ' + dp[0] + ', ' + WEEKDAY_NAMES[new Date(Date.UTC(dp[0], dp[1] - 1, dp[2])).getUTCDay()];
+    // ── 3 · time
+    let shown = '—', hm = '';
+    if (d.mode === 'now') { const n = new Date(); shown = fmtTime(n, tz); hm = lmHM(n, tz); }
+    else if (d.mode === 'sunrise') {
+      const s = LM.sun;
+      if (s && s.sunrise) { shown = fmtTime(s.sunrise, s.tz); hm = lmHM(s.sunrise, s.tz); }
+      else shown = (s === null) ? '…' : '—';
+    } else if (d.time) { shown = lmFmt12(d.time); hm = d.time; }
+    lmEl('lm-time-val').textContent = shown;
+    lmEl('lm-time').value = hm;
+    lmSetOn(lmEl('lm-now'), d.mode === 'now');
+    lmSetOn(lmEl('lm-sunrise'), d.mode === 'sunrise');
+    lmSetOn(lmEl('lm-time'), d.mode === 'custom');
+    lmEl('lm-ok').disabled = !loc || LM.gpsBusy;
+  }
+
+  // Sunrise for the draft place + day (shown as the time while "सूर्योदय" is chosen).
+  // Own request on purpose: the draft place is not PCH yet.
+  async function lmEnsureSunrise() {
+    const d = LM.d;
+    if (!d || d.mode !== 'sunrise' || !d.loc) return;
+    const key = d.loc.lat + ',' + d.loc.lon + ',' + d.date;
+    if (LM.sunCache.has(key)) { LM.sun = LM.sunCache.get(key); lmRender(); return; }
+    LM.sun = null; lmRender();
+    let out = false;
+    try {
+      const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=' + d.loc.lat + '&longitude=' + d.loc.lon + '&daily=sunrise&timezone=auto&start_date=' + d.date + '&end_date=' + d.date, { cache: 'no-store' });
       const data = await res.json();
-      const results = data.results || [];
-      if (!results.length) {
-        pchBusy.hide(true);
-        pchSetStatus('स्थान नहीं मिला। कृपया दूसरा नाम आज़माएँ।', true);
-        return;
+      if (data && data.daily && data.daily.sunrise) {
+        const tz = typeof data.utc_offset_seconds === 'number' ? data.utc_offset_seconds / 60 : lmTzFor(d.date);
+        out = { sunrise: parseLocalISOToUTCDate(data.daily.sunrise[0], tz), tz: tz };
+        LM.sunCache.set(key, out);
       }
-      const r = results[0];
-      PCH.lat = r.latitude; PCH.lon = r.longitude; PCH.name = r.name; PCH.state = r.admin1 || '';
-      PCH.tzOffsetMin = null; // resolved by pchRunCalculation's own sun-times fetch, below
-      pchSetStatus('स्थान मिल गया: ' + r.name + (r.admin1 ? ', ' + r.admin1 : '') + (r.country ? ', ' + r.country : ''));
-      pchBusy.show('sun', r.name + ' के लिए पंचांग तैयार हो रहा है');
-      pchRunCalculation();
+    } catch (e) { /* offline / out of range: show — (OK still falls back to the offline estimate) */ }
+    const nd = LM.d;
+    if (!nd || !nd.loc || nd.mode !== 'sunrise' || (nd.loc.lat + ',' + nd.loc.lon + ',' + nd.date) !== key) return;   // changed meanwhile
+    LM.sun = out; lmRender();
+  }
+
+  /* ── events ── */
+  function lmBind() {
+    if (LM.bound) return;
+    LM.bound = true;
+    const dEl = lmEl('lm-date'), tEl = lmEl('lm-time'), sEl = lmEl('lm-search-input');
+    [dEl, tEl].forEach(function (el) {                       // the whole box opens the picker, not only its icon
+      el.addEventListener('click', function () { try { if (typeof el.showPicker === 'function') el.showPicker(); } catch (e) { /* needs a user gesture / unsupported */ } });
+    });
+    function dateChosen() {
+      if (!LM.d || !dEl.value) return;
+      let v = dEl.value;
+      if (dEl.min && v < dEl.min) v = dEl.min;
+      if (dEl.max && v > dEl.max) v = dEl.max;
+      LM.d.date = v; lmRender(); lmEnsureSunrise();
+    }
+    dEl.addEventListener('change', dateChosen);               // 'change' only: 'input' would fire while a year is still being typed
+    function timeChosen() {
+      if (!LM.d || !tEl.value) return;
+      LM.d.mode = 'custom'; LM.d.time = tEl.value; lmRender();
+    }
+    tEl.addEventListener('change', timeChosen);
+    tEl.addEventListener('input', timeChosen);
+    sEl.addEventListener('input', lmOnSearchInput);
+    sEl.addEventListener('keydown', lmOnSearchKey);
+    lmEl('lm-results').addEventListener('click', function (e) {
+      const li = e.target.closest('.lm-res'); if (li) lmChoose(+li.getAttribute('data-i'));
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape' || !LM.d) return;
+      const sec = lmEl('pch-location-section');
+      if (!sec || !sec.classList.contains('is-popup')) return;
+      if (!lmEl('lm-results').hidden) { lmHideResults(); return; }   // first Esc closes the list, second cancels
+      pchCloseLocationPopup();
+    });
+  }
+
+  window.lmPickToday = function () { if (!LM.d) return; LM.d.date = lmTodayS(); lmRender(); lmEnsureSunrise(); };
+  window.lmPickNow = function () { if (!LM.d) return; LM.d.mode = 'now'; lmRender(); };
+  window.lmPickSunrise = function () { if (!LM.d) return; LM.d.mode = 'sunrise'; lmRender(); lmEnsureSunrise(); };
+
+  /* ── GPS ── */
+  window.lmUseGPS = function () {
+    if (!LM.d || LM.gpsBusy) return;
+    pchSetStatus('');
+    if (!navigator.geolocation) { pchSetStatus('इस डिवाइस/ब्राउज़र पर GPS उपलब्ध नहीं है।' + pchGpsFallbackHint(), true); return; }
+    if (window.isSecureContext === false) { pchSetStatus('GPS केवल सुरक्षित (HTTPS) पेज पर काम करता है।' + pchGpsFallbackHint(), true); return; }
+    LM.gpsBusy = true;
+    const tok = ++LM.gpsTok;
+    lmRender();
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      if (tok !== LM.gpsTok || !LM.d) return;                 // popup closed / cancelled meanwhile
+      LM.gpsBusy = false;
+      let iana = ''; try { iana = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* ignore */ }
+      const loc = { lat: pos.coords.latitude, lon: pos.coords.longitude, name: LM_GPS_NAME, state: '', mode: 'gps', iana: iana, tz: -new Date().getTimezoneOffset() };
+      LM.d.loc = loc;
+      LM.selLabel = ''; lmEl('lm-search-input').value = ''; lmHideResults();
+      lmRender(); lmEnsureSunrise();
+      lmResolveGpsState(loc);
+    }, function (err) {
+      if (tok !== LM.gpsTok || !LM.d) return;
+      LM.gpsBusy = false;
+      lmRender();
+      pchSetStatus(pchGpsErrorMsg(err), true);
+    }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 });
+  };
+  async function lmResolveGpsState(loc) {                     // state / UT for the header and the holiday lists
+    try {
+      const ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+      const to = ctl ? setTimeout(function () { ctl.abort(); }, 8000) : null;
+      const res = await fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=' + loc.lat + '&longitude=' + loc.lon + '&localityLanguage=en', { cache: 'no-store', signal: ctl ? ctl.signal : undefined });
+      if (to) clearTimeout(to);
+      const st = String(((await res.json()) || {}).principalSubdivision || '').trim();
+      if (st && LM.d && LM.d.loc === loc) { loc.state = st; lmRender(); }
+    } catch (e) { /* offline / blocked: coordinates stay in the header */ }
+  }
+
+  /* ── manual search (Open-Meteo geocoding) ── */
+  function lmHideResults() {
+    const ul = lmEl('lm-results'); ul.hidden = true; ul.innerHTML = ''; LM.results = []; LM.hot = -1;
+    lmEl('lm-search-input').setAttribute('aria-expanded', 'false');
+  }
+  function lmShowNote(text) {
+    const ul = lmEl('lm-results');
+    ul.innerHTML = ''; const li = document.createElement('li'); li.className = 'lm-res lm-res-note'; li.textContent = text; ul.appendChild(li);
+    ul.hidden = false; LM.results = []; LM.hot = -1;
+  }
+  function lmRenderResults() {
+    const ul = lmEl('lm-results'); ul.innerHTML = '';
+    LM.results.forEach(function (r, i) {
+      const sub = [r.admin2, r.admin1, r.country].filter(function (v, k, a) { return v && a.indexOf(v) === k; }).join(', ');
+      const li = document.createElement('li');
+      li.className = 'lm-res'; li.setAttribute('role', 'option'); li.setAttribute('data-i', i);
+      const n = document.createElement('div'); n.className = 'lm-res-name'; n.textContent = r.name;
+      const s = document.createElement('div'); s.className = 'lm-res-sub'; s.textContent = sub;
+      li.appendChild(n); if (sub) li.appendChild(s); ul.appendChild(li);
+    });
+    ul.hidden = false;
+    lmEl('lm-search-input').setAttribute('aria-expanded', 'true');
+    LM.hot = -1;
+  }
+  function lmOnSearchInput() {
+    const v = lmEl('lm-search-input').value.trim();
+    lmEl('lm-search').classList.toggle('is-selected', !!LM.d && !!LM.d.loc && LM.d.loc.mode === 'manual' && v === LM.selLabel && !!v);
+    clearTimeout(LM.searchTimer);
+    pchSetStatus('');
+    if (v.length < 2) { LM.searchTok++; lmHideResults(); return; }
+    if (v === LM.selLabel) { LM.searchTok++; lmHideResults(); return; }
+    LM.searchTimer = setTimeout(function () { lmSearch(v); }, 450);
+  }
+  async function lmSearch(q) {
+    const tok = ++LM.searchTok;
+    clearTimeout(LM.searchTimer);
+    lmShowNote('खोजा जा रहा है…');
+    try {
+      const res = await fetch('https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(q) + '&count=10&language=en&format=json', { cache: 'no-store' });
+      const data = await res.json();
+      if (tok !== LM.searchTok || !LM.d) return;              // newer query / popup closed
+      const rs = data.results || [];
+      if (!rs.length) { lmShowNote('“' + q + '” के लिए कोई स्थान नहीं मिला। कृपया दूसरा नाम आज़माएँ।'); return; }
+      LM.results = rs; lmRenderResults();
     } catch (e) {
-      pchBusy.hide(true);
-      pchSetStatus('स्थान खोजने में त्रुटि हुई। कृपया इंटरनेट कनेक्शन जाँचें।', true);
+      if (tok === LM.searchTok && LM.d) lmShowNote('स्थान खोजने में त्रुटि हुई। कृपया इंटरनेट कनेक्शन जाँचें।');
     }
   }
+  function lmOnSearchKey(e) {
+    const n = LM.results.length;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (!n) return;
+      e.preventDefault();
+      LM.hot = (LM.hot + (e.key === 'ArrowDown' ? 1 : -1) + n) % n;
+      const items = lmEl('lm-results').querySelectorAll('.lm-res');
+      items.forEach(function (li, i) { li.classList.toggle('is-hot', i === LM.hot); });
+      if (items[LM.hot]) items[LM.hot].scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (LM.hot >= 0) lmChoose(LM.hot);
+      else if (n === 1) lmChoose(0);
+      else { const v = lmEl('lm-search-input').value.trim(); if (v.length >= 2) lmSearch(v); }
+    }
+  }
+  function lmChoose(i) {
+    const r = LM.results[i]; if (!r || !LM.d) return;
+    LM.d.loc = { lat: r.latitude, lon: r.longitude, name: r.name, state: r.admin1 || '', mode: 'manual', iana: r.timezone || '' };
+    LM.selLabel = lmPlaceLabel(LM.d.loc);
+    const inp = lmEl('lm-search-input'); inp.value = LM.selLabel; inp.blur();
+    LM.searchTok++; clearTimeout(LM.searchTimer);
+    lmHideResults(); pchSetStatus('');
+    lmRender(); lmEnsureSunrise();
+  }
+
+  /* ── OK ── */
+  window.lmConfirm = function () {
+    const d = LM.d;
+    if (!d || !d.loc || LM.gpsBusy) return;
+    // text typed in the search box but no place picked from the list yet
+    const typed = lmEl('lm-search-input').value.trim();
+    if (typed && (d.loc.mode === 'gps' || typed !== LM.selLabel)) {
+      pchSetStatus('कृपया सूची में से अपना स्थान चुनें।', true);
+      if (lmEl('lm-results').hidden && typed.length >= 2) lmSearch(typed);
+      return;
+    }
+    const first = PCH.lat === null;
+    if (!first && lmSig() === LM.initSig) { pchCloseLocationPopup(); return; }   // nothing changed
+    const loc = d.loc, mode = d.mode, time = d.time, tz = lmTzFor(d.date);
+    const locChanged = first || loc.lat !== PCH.lat || loc.lon !== PCH.lon || (loc.mode === 'gps') !== (PCH.name === LM_GPS_NAME);
+    let p = d.date.split('-').map(Number), y = p[0], m = p[1] - 1, day = p[2];
+    pchHideLocationSection();                                // closes the popup and drops the draft
+    pchSetStatus('');
+    if (locChanged) {
+      PCH.lat = loc.lat; PCH.lon = loc.lon; PCH.name = loc.name; PCH.state = loc.state || '';
+      PCH.tzOffsetMin = tz;                                  // refined by the sun-times fetch that follows
+    }
+    if (first || !pchCal.open) {                             // nothing to anchor a date to yet: plain calculation
+      PCH.customDateTime = null;
+      pchBusy.show('sun', loc.name + ' के लिए पंचांग तैयार हो रहा है');
+      pchRunCalculation();
+      if (loc.mode === 'gps' && !loc.state) pchResolveGpsState(PCH.lat, PCH.lon);
+      return;
+    }
+    pchBusy.show('calc');
+    // keep the day inside the calendar window
+    const u = Date.UTC(y, m, day), lo = pchCalMinUTC(), hi = pchCalMaxUTC();
+    if (u < lo || u > hi) { const c = new Date(Math.min(Math.max(u, lo), hi)); y = c.getUTCFullYear(); m = c.getUTCMonth(); day = c.getUTCDate(); }
+    const isToday = pchCalIsToday({ y: y, m: m, d: day });
+    if (mode === 'sunrise') {
+      window.pchCalSelect(y, m, day, true);                  // sunrise of that day (Open-Meteo, offline fallback)
+    } else if (mode === 'now' && isToday) {
+      window.pchCalSelect(y, m, day);                        // today + now = back to live
+    } else {
+      pchCal.sel = { y: y, m: m, d: day }; pchCal.y = y; pchCal.m = m; pchCal.sunInfo = null; pchCalRender();
+      if (mode === 'custom') window.pchCalTimeChanged(time);
+      else window.pchCalLive();                              // another day, running at the current time of day
+    }
+    if (locChanged && loc.mode === 'gps' && !loc.state) pchResolveGpsState(PCH.lat, PCH.lon);
+  };
 
   // Sunrise/sunset for a given location+date never changes, but
   // pchRunCalculation() re-runs every minute the page is open (to keep
@@ -3235,7 +3555,7 @@
         isLive = true;
       } else if (si && Math.abs(si.sunrise.getTime() - base.getTime()) < 60000) {
         isSunrise = true;
-        note = si.approx ? 'अनुमानित सूर्योदय — Open-Meteo से पुष्टि नहीं हो सकी' : 'Open-Meteo से पुष्ट';
+        note = si.approx ? 'अनुमानित सूर्योदय' : '';
       }
     } else { base = new Date(); isLive = true; }
     if (base) inp.textContent = fmtTime(base, tz);   // read-only text, e.g. 8:15 AM
@@ -4142,11 +4462,13 @@ function showSecondaryPage(pageId) {
 
     var modal = document.getElementById('profile-modal');
     if (modal) modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';   // page must not scroll behind the popup
   };
 
   window.closeProfileModal = function closeProfileModal() {
     var modal = document.getElementById('profile-modal');
     if (modal) modal.style.display = 'none';
+    document.body.style.overflow = '';
     _profilePendingPhoto = null;
     var fileInput = document.getElementById('profile-photo-input');
     if (fileInput) fileInput.value = '';
@@ -4452,3 +4774,17 @@ function deleteMyLocalData() {
   } catch (e) {}
   window.location.reload();
 }
+
+
+/* Popups (profile, photo crop, change location & time): a swipe / wheel on the dimmed area outside the card
+   must not scroll the page behind it. A tap there still cancels via each popup's own onclick. */
+(function () {
+  function isBackdrop(t) {
+    if (!t || !t.id) return false;
+    if (t.id === 'profile-modal' || t.id === 'profile-crop-modal') return true;
+    return t.id === 'pch-location-section' && t.classList.contains('is-popup');
+  }
+  function block(e) { if (isBackdrop(e.target)) e.preventDefault(); }
+  document.addEventListener('touchmove', block, { passive: false });
+  document.addEventListener('wheel', block, { passive: false });
+})();
