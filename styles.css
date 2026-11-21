@@ -400,6 +400,8 @@ body::after { display: none; }
 /* Choghadiya cards: less space before the first row and after the last row (left/right unchanged) */
 .about-card:has(> #pch-choghadiya-list), #chogh-full-prev, #chogh-full-day, #chogh-full-night { padding-top: 4px; padding-bottom: 4px; }
 .pch-chogh-name.neutral { color: var(--brass); }
+/* Vrat-tyohar & public-holiday cards: slightly less space before the first row and after the last row (left/right unchanged) */
+.about-card:has(> #pch-vrat-list), .about-card:has(> #pch-holiday-list) { padding-top: 6px; padding-bottom: 6px; }
 
 .vrat-item, .hol-item { padding: 12px 2px; }
 .vrat-date-badge, .hol-date-badge { width: 48px; height: 48px; border-radius: 14px; }
@@ -997,6 +999,18 @@ body.dark-mode .pch-cal-dow span.is-sel:first-child { color:#FF8A7A; }
 /* ── Panchang Calendar: stronger tithi text in date cells ── */
 .pch-cal-tithi { font-weight:700; color:var(--ink); }
 
+/* Calendar: Purnima = yellow outline + yellow glow; Amavasya = white text with black outline + black glow */
+.pch-cal-tithi.is-purnima, .pch-cal-tithi.is-amavasya { overflow:visible; text-overflow:clip; paint-order:stroke fill; }
+.pch-cal-tithi.is-purnima {
+  -webkit-text-stroke:0.6px #F2B705;
+  text-shadow:0 0 3px #FFD21F, 0 0 6px rgba(255,210,31,.85);
+}
+.pch-cal-tithi.is-amavasya, .pch-cal-cell.is-sel .pch-cal-tithi.is-amavasya {
+  color:#fff;
+  -webkit-text-stroke:0.6px #000;
+  text-shadow:0 0 3px #000, 0 0 6px rgba(0,0,0,.85);
+}
+
 
 /* Profile modal: keep native time input inside its column (mobile browsers give it an intrinsic min-width) */
 .profile-dt-field .profile-input {
@@ -1277,21 +1291,6 @@ body.dark-mode .lm-search.is-selected .lm-search-ico, body.dark-mode .lm-search-
 .gps-gate-err:empty { display: none; }
 .gps-reco { display: flex; align-items: flex-start; gap: 8px; margin-top: 14px; font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); }
 .gps-pill { flex: 0 0 auto; padding: 2px 9px; border-radius: 99px; font-size: 11px; font-weight: 700; color: #fff; background: #1E7A4A; white-space: nowrap; }
-.gps-consent {
-  display: flex; align-items: flex-start; gap: 10px; margin-top: 12px; padding: 0; cursor: pointer;
-  border: 0; background: transparent;
-}
-.gps-consent input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.gps-consent-box {
-  flex: 0 0 auto; width: 22px; height: 22px; margin-top: 1px; border-radius: 7px; box-sizing: border-box;
-  display: flex; align-items: center; justify-content: center; color: transparent;
-  border: 2px solid var(--ink-soft); background: var(--white); transition: background .15s, border-color .15s, color .15s;
-}
-.gps-consent input:checked + .gps-consent-box { background: var(--saffron); border-color: var(--saffron); color: #fff; }
-.gps-consent input:focus-visible + .gps-consent-box { outline: 2px solid var(--saffron); outline-offset: 2px; }
-.gps-consent-txt { font-size: 13.5px; line-height: 1.55; color: var(--ink); }
-.gps-consent.need { animation: gpsShake .4s; }
-.gps-consent.need .gps-consent-box { border-color: #B23A2E; }
 .gps-gate-btn, .gps-alt-btn {
   display: block; width: 100%; min-height: 48px; border-radius: 14px; cursor: pointer;
   font-family: 'Figtree','Hind',sans-serif; font-size: 15px; font-weight: 700;
@@ -1302,7 +1301,6 @@ body.dark-mode .lm-search.is-selected .lm-search-ico, body.dark-mode .lm-search-
   box-shadow: 0 14px 26px -14px rgba(54,49,140,.8); transition: opacity .15s, filter .15s;
 }
 .gps-gate-btn:hover { filter: brightness(1.06); }
-.gps-gate-btn[aria-disabled="true"] { opacity: .5; box-shadow: none; }
 .gps-gate-btn:disabled { opacity: .65; cursor: progress; }
 .gps-or { display: flex; align-items: center; gap: 10px; margin: 14px 0 12px; font-size: 12px; font-weight: 600; color: var(--ink-soft); }
 .gps-or::before, .gps-or::after { content: ''; flex: 1 1 auto; height: 1px; background: var(--border); }
@@ -1317,8 +1315,7 @@ body.dark-mode .gps-gate-err { color: #F2928F; background: rgba(242,146,143,.12)
 body.dark-mode .gps-why-h { color: #B9B6F5; }
 @keyframes gpsRise { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: none; } }
 @keyframes gpsPulse { from { transform: scale(1); opacity: .8; } to { transform: scale(1.7); opacity: 0; } }
-@keyframes gpsShake { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
-@media (prefers-reduced-motion: reduce) { .gps-gate-card, .gps-pin::before, .gps-pin::after, .gps-consent.need { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .gps-gate-card, .gps-pin::before, .gps-pin::after { animation: none; } }
 @media (max-width: 360px) { .gps-body { padding: 14px 14px 16px; } .gps-gate-title { font-size: 18.5px; } }
 
 /* ══════════════════════════════════════════════════════════════════
