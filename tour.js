@@ -1,10 +1,17 @@
 /* ============================================================================
    PRODUCT TOUR — spotlight walkthrough for first-time users, in the same top-to-bottom
-   order as the page: welcome → calendar → Geo Timestamp (place/date/time + Change) →
-   tap-for-timeline (demonstrated live on the real detail page) → sections below
-   (choghadiya, shubh-ashubh, vrat) → header tools (settings, profile).
+   order as the page: welcome → calendar (month bar, then a date box) → Geo Timestamp
+   (place/date/time + Change) → tap-for-timeline (pointer only; the detail page is not opened)
+   → sections below (choghadiya, kaal, vrat-tyohar & holidays) → header tools (settings, profile).
    Replay any time from ⚙️ → App Tour (spStartTour()).
    State lives in localStorage under pch_tour_state (cleared by "Delete my data").
+
+   Robustness notes (why the tour once looked "broken"):
+   • Closing the timeline page makes panchang.js re-apply the old scroll position for ~3 s
+     (spRestoreScroll). That fought the tour's own scrolling, so later steps landed off-screen
+     with their buttons unreachable. The tour now releases that lock before it scrolls.
+   • Steps whose target is taller than the screen (the whole calendar card) are split into
+     small targets, and the tip is always clamped inside the viewport.
    ============================================================================ */
 (function () {
   'use strict';
@@ -68,38 +75,51 @@
   }
 
   /* ── step catalogue ── */
+  // Small, stable targets only: a target must fit on screen together with the tip.
+  function calSelectedCell() {
+    return q('#pch-cal-grid .pch-cal-cell.is-sel') || q('#pch-cal-grid .pch-cal-cell.is-today') ||
+           q('#pch-cal-grid .pch-cal-cell:not(.pch-cal-empty):not(.is-dis)');
+  }
+  function sectionOf(sel) { var e = q(sel); return e && e.closest('.about-section'); }
+
   var STEPS = {
     welcome: { page: 'main', center: true, art: '🙏', title: 'सिंपल पंचांग में स्वागत है',
       body: 'आपके स्थान और समय के अनुसार आज का पंचांग — तिथि, नक्षत्र, चौघड़िया और व्रत-त्योहार एक ही जगह। आइए एक मिनट में देखें कि यह कैसे काम करता है।',
       next: 'शुरू करें', skip: 'अभी नहीं' },
 
-    cal: { page: 'main', target: function () { return q('#pch-cal-block .pch-cal-card'); },
+    cal: { page: 'main', target: function () { return q('#pch-cal-block .pch-cal-head'); },
       title: 'पंचांग कैलेंडर',
-      body: 'पूरे महीने का पंचांग — हर तारीख़ पर तिथि, नक्षत्र और व्रत-त्योहार। किसी तारीख़ को छूते ही नीचे का पूरा पंचांग उस दिन के सूर्योदय के अनुसार बदल जाता है। महीना बदलने के लिए ‹ › दबाएँ या उँगली से सरकाएँ।' },
+      body: 'यहाँ महीना और उसका हिंदू मास दिखता है। महीना बदलने के लिए ‹ › दबाएँ या कैलेंडर को उँगली से सरकाएँ।' },
 
-    geo: { page: 'main', target: function () { return q('#pch-cal-loc') && q('#pch-cal-loc').closest('.about-card'); },
+    caldate: { page: 'main', target: calSelectedCell,
+      title: 'हर तारीख़ का पंचांग',
+      body: 'हर तारीख़ के डिब्बे में तिथि, पक्ष, नक्षत्र और व्रत-त्योहार लिखा है। पूर्णिमा पीली चमक के साथ और अमावस्या काली चमक के साथ दिखती है। किसी तारीख़ को छूते ही नीचे का पूरा पंचांग उस दिन के सूर्योदय के अनुसार बदल जाता है।' },
+
+    geo: { page: 'main', target: function () { var e = q('#pch-cal-loc'); return e && e.closest('.about-card'); },
       title: 'किस स्थान, दिन और समय का पंचांग',
       body: 'नीचे का पूरा पंचांग यहाँ लिखे दिनांक, समय और स्थान के अनुसार निकला है। किसी दूसरे शहर, तारीख़ या समय का पंचांग देखना हो तो “Change” बटन दबाएँ।' },
 
     tap: { page: 'main', hand: true, target: function () { return q('.pch-item[data-eld="tithi"]'); },
       title: 'किसी भी बॉक्स को छुएँ',
-      body: 'तिथि, नक्षत्र, योग, करण, राशि, मास, पक्ष, ऋतु, अयन और विक्रम संवत — किसी को भी छूने पर उसकी पूरी समय-रेखा खुलती है: पिछला क्या था, अभी क्या है और आगे क्या आएगा।',
-      next: 'खोलकर देखें' },
+      body: 'तिथि, नक्षत्र, योग, करण, राशि, मास, पक्ष, ऋतु, अयन और विक्रम संवत — किसी को भी छूने पर उसकी पूरी समय-रेखा खुलती है: पिछला क्या था, अभी क्या है और आगे क्या आएगा।' },
 
-    d1: { page: 'detail',
-      target: function () { return q('#eld-timeline .eld-seg--current') || q('#eld-timeline .eld-seg-card'); },
-      title: 'बदलाव का समय और अभी कितना बीता',
-      body: 'हर बिंदु के साथ वह सटीक समय लिखा है जब एक तिथि समाप्त होती है और अगली शुरू होती है। वर्तमान कार्ड की प्रगति पट्टी बताती है कि कितना समय बीता और कितना शेष है।' },
+    chogh: { page: 'main', target: function () { return sectionOf('#pch-choghadiya-list'); },
+      title: 'चौघड़िया',
+      body: 'दिन और रात के शुभ-अशुभ समय एक नज़र में। “सम्पूर्ण चौघड़िया देखें” बटन से दिन और रात की पूरी सूची खुलती है।' },
 
-    more: { page: 'main', target: function () { var e = q('#pch-choghadiya-list'); return e && e.closest('.about-section'); },
-      title: 'चौघड़िया, काल और व्रत-त्योहार',
-      body: 'नीचे चौघड़िया, काल (राहुकाल, अभिजित आदि), मुहूर्त, व्रत-त्योहार और सार्वजनिक अवकाश हैं। “सम्पूर्ण … देखें” बटन से पूरी सूची खुलती है।' },
+    kaal: { page: 'main', target: function () { return sectionOf('#pch-muhurt-grid'); },
+      title: 'काल',
+      body: 'राहुकाल, अभिजित मुहूर्त जैसे ज़रूरी समय यहाँ मिलते हैं। नीचे उस महीने के शुभ कार्यों के मुहूर्त की तारीख़ें भी दी गई हैं।' },
+
+    vrat: { page: 'main', target: function () { return sectionOf('#pch-vrat-list'); },
+      title: 'व्रत-त्योहार और अवकाश',
+      body: 'आने वाले व्रत और त्योहार यहाँ दिखते हैं, उसके ठीक नीचे सार्वजनिक अवकाश। “सम्पूर्ण … देखें” बटन से पूरे महीने की सूची खुलती है।' },
 
     header: { page: 'main', last: true, target: function () { return q('.header-actions'); },
       title: 'सेटिंग्स और प्रोफ़ाइल',
       body: '⚙️ से डार्क मोड, संपर्क और यह टूर दोबारा देखें। 👤 प्रोफ़ाइल में अपना जन्म विवरण भरें — तभी आपका चंद्रबल और ताराबल दिखेगा।' }
   };
-  var FLOW = ['welcome', 'cal', 'geo', 'tap', 'd1', 'more', 'header'];
+  var FLOW = ['welcome', 'cal', 'caldate', 'geo', 'tap', 'chogh', 'kaal', 'vrat', 'header'];
 
   /* ── DOM ── */
   var root, spot, tip, hand, refs = {};
@@ -162,8 +182,14 @@
     raf = requestAnimationFrame(function () { raf = 0; place(); });
   }
 
+  // panchang.js re-applies the saved scroll position for ~3 s after the timeline page closes
+  // (spRestoreScroll). Cancel it, otherwise it drags the page away from the step we scroll to.
+  function releaseScrollLock() {
+    try { if (window.spRestore && typeof window.spRestore.stop === 'function') window.spRestore.stop(); } catch (e) { /* ignore */ }
+  }
+
   function scrollToTarget(el) {
-    var vh = window.innerHeight, headerH = 62, reserve = 230;
+    var vh = window.innerHeight, headerH = 62, reserve = Math.min(300, Math.round(vh * 0.4));
     var r = el.getBoundingClientRect();
     var desiredTop;
     if (r.height + reserve + headerH + 24 <= vh) {
@@ -179,10 +205,22 @@
         var y = window.pageYOffset;
         still = (Math.abs(y - last) < 0.5) ? still + 1 : 0;
         last = y;
-        if (still >= 3 || Date.now() - t0 > 1100) return resolve();
+        if (still >= 4 || Date.now() - t0 > 1200) return resolve();
         setTimeout(poll, 40);
       })();
     });
+  }
+  function inView(el) {
+    var r = el.getBoundingClientRect();
+    return r.bottom > 80 && r.top < window.innerHeight - 80;
+  }
+  // Scroll until the target is really on screen (retry: layout may still be settling).
+  async function bringIntoView(el) {
+    for (var i = 0; i < 3; i++) {
+      releaseScrollLock();
+      await scrollToTarget(el);
+      if (inView(el)) return;
+    }
   }
 
   async function go(n) {
@@ -204,15 +242,17 @@
       } else if (st.page === 'main' && detailOpen()) {
         window.pchCloseElementDetail();
         await waitFor(function () { return !detailOpen(); }, 2000);
-        await sleep(250);
+        await sleep(120);
       }
+      if (st.page === 'main') releaseScrollLock();     // also covers the phone Back gesture closing the page
       if (my !== nav || !active) return;
       idx = n;
       var el = st.target ? st.target() : null;
-      if (el && !isFixed(el)) await scrollToTarget(el);
+      if (el && !isFixed(el)) await bringIntoView(el);
       if (my !== nav || !active) return;
       paint(st);
       place();
+      if (el) { await sleep(60); if (my === nav && active) place(); }   // settle after fonts/layout shifts
     } catch (err) {
       console.error('Tour step failed:', err);
       if (active) finish(false);       // fail open: hide the overlay, hand the app back
@@ -248,6 +288,10 @@
     var el = st.target ? st.target() : null;
     var tw = tip.offsetWidth, th = tip.offsetHeight;
     var left, top;
+    if (el && !st.center) {                                    // target scrolled out of sight → treat as missing
+      var er = el.getBoundingClientRect();
+      if (er.bottom <= 0 || er.top >= vh || !er.width || !er.height) el = null;
+    }
     root.classList.toggle('is-center', !!st.center || !el);   // no target found: dim + centre instead of a stray tip
     if (!el || st.center) {
       spot.style.opacity = '0';
@@ -274,6 +318,8 @@
       else if (sTop - gap - th >= 68) top = sTop - gap - th;                       // above (clear of the header)
       else top = vh - th - margin;                                                 // dock at the bottom
     }
+    left = Math.max(margin, Math.min(left, vw - margin - tw));   // never let the buttons leave the screen
+    top = Math.max(margin, Math.min(top, vh - margin - th));
     tip.style.left = left + 'px';
     tip.style.top = top + 'px';
     tip.classList.remove('is-changing');
@@ -314,6 +360,7 @@
       window.pchCloseElementDetail();
       await waitFor(function () { return !detailOpen(); }, 2000);
     }
+    releaseScrollLock();
     if (completed) window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
