@@ -59,39 +59,64 @@
     return norm360(appLong);
   }
 
-  // Geocentric ecliptic longitude of the Moon (degrees) — reduced Meeus ch.47 series
+  // Approximate ΔT = TT − UT in seconds (quadratic fit to Swiss Ephemeris ΔT, 2000-2050)
+  function deltaTSeconds(jd) {
+    let t = (jd - 2451545.0) / 365.25;
+    t = Math.max(-30, Math.min(100, t));
+    return 64.0 + 0.1528 * t + 0.001225 * t * t;
+  }
+
+  // Meeus ch.47 Table 47.A — periodic terms for Moon longitude, FULL 59-term set.
+  // [D, M, M', F, coefficient in 1e-6 deg]
+  const MOON_LON_TERMS = [
+    [0,0,1,0,6288774],[2,0,-1,0,1274027],[2,0,0,0,658314],[0,0,2,0,213618],
+    [0,1,0,0,-185116],[0,0,0,2,-114332],[2,0,-2,0,58793],[2,-1,-1,0,57066],
+    [2,0,1,0,53322],[2,-1,0,0,45758],[0,1,-1,0,-40923],[1,0,0,0,-34720],
+    [0,1,1,0,-30383],[2,0,0,-2,15327],[0,0,1,2,-12528],[0,0,1,-2,10980],
+    [4,0,-1,0,10675],[0,0,3,0,10034],[4,0,-2,0,8548],[2,1,-1,0,-7888],
+    [2,1,0,0,-6766],[1,0,-1,0,-5163],[1,1,0,0,4987],[2,-1,1,0,4036],
+    [2,0,2,0,3994],[4,0,0,0,3861],[2,0,-3,0,3665],[0,1,-2,0,-2689],
+    [2,0,-1,2,-2602],[2,-1,-2,0,2390],[1,0,1,0,-2348],[2,-2,0,0,2236],
+    [0,1,2,0,-2120],[0,2,0,0,-2069],[2,-2,-1,0,2048],[2,0,1,-2,-1773],
+    [2,0,0,2,-1595],[4,-1,-1,0,1215],[0,0,2,2,-1110],[3,0,-1,0,-892],
+    [2,1,1,0,-810],[4,-1,-2,0,759],[0,2,-1,0,-713],[2,2,-1,0,-700],
+    [2,1,-2,0,691],[2,-1,0,-2,596],[4,0,1,0,549],[0,0,4,0,537],
+    [4,-1,0,0,520],[1,0,-2,0,-487],[2,1,0,-2,-399],[0,0,2,-2,-381],
+    [1,1,1,0,351],[3,0,-2,0,-340],[4,0,-3,0,330],[2,-1,2,0,327],
+    [0,2,1,0,-323],[1,1,-1,0,299],[2,0,3,0,294]
+  ];
+
+  // Geocentric apparent ecliptic longitude of the Moon (degrees) — full Meeus ch.47
+  // series + ΔT (UT→TT) + nutation in longitude, so it is consistent with the
+  // apparent Sun above (tithi = Moon − Sun).
   function moonLongitude(jd) {
-    const T = T_fromJD(jd);
-    const Lp = norm360(218.3164477 + 481267.88123421 * T - 0.0015786*T*T + T*T*T/538841);
-    const D  = norm360(297.8501921 + 445267.1114034 * T - 0.0018819*T*T + T*T*T/545868);
-    const M  = norm360(357.5291092 + 35999.0502909 * T - 0.0001536*T*T + T*T*T/24490000);
-    const Mp = norm360(134.9633964 + 477198.8675055 * T - 0.0087414*T*T + T*T*T/69699);
-    const F  = norm360(93.2720950 + 483202.0175233 * T - 0.0036539*T*T - T*T*T/3526000);
+    const jde = jd + deltaTSeconds(jd) / 86400;   // TT
+    const T = T_fromJD(jde);
+    const T2 = T*T, T3 = T2*T, T4 = T3*T;
+    const Lp = norm360(218.3164477 + 481267.88123421 * T - 0.0015786*T2 + T3/538841 - T4/65194000);
+    const D  = norm360(297.8501921 + 445267.1114034 * T - 0.0018819*T2 + T3/545868 - T4/113065000);
+    const M  = norm360(357.5291092 + 35999.0502909 * T - 0.0001536*T2 + T3/24490000);
+    const Mp = norm360(134.9633964 + 477198.8675055 * T + 0.0087414*T2 + T3/69699 - T4/14712000);
+    const F  = norm360(93.2720950 + 483202.0175233 * T - 0.0036539*T2 - T3/3526000 + T4/863310000);
     const Dr = D*D2R, Mr = M*D2R, Mpr = Mp*D2R, Fr = F*D2R;
-    // Main periodic terms for longitude (0.000001deg units), largest ~15 terms
+    const E = 1 - 0.002516 * T - 0.0000074 * T2;
     let dL = 0;
-    dL += 6288774 * Math.sin(Mpr);
-    dL += 1274027 * Math.sin(2*Dr - Mpr);
-    dL += 658314  * Math.sin(2*Dr);
-    dL += 213618  * Math.sin(2*Mpr);
-    dL += -185116 * Math.sin(Mr);
-    dL += -114332 * Math.sin(2*Fr);
-    dL += 58793   * Math.sin(2*Dr - 2*Mpr);
-    dL += 57066   * Math.sin(2*Dr - Mr - Mpr);
-    dL += 53322   * Math.sin(2*Dr + Mpr);
-    dL += 45758   * Math.sin(2*Dr - Mr);
-    dL += -40923  * Math.sin(Mr - Mpr);
-    dL += -34720  * Math.sin(Dr);
-    dL += -30383  * Math.sin(Mr + Mpr);
-    dL += 15327   * Math.sin(2*Dr - 2*Fr);
-    dL += -12528  * Math.sin(Mpr + 2*Fr);
-    dL += 10980   * Math.sin(Mpr - 2*Fr);
-    dL += 10675   * Math.sin(4*Dr - Mpr);
-    dL += 7113    * Math.sin(2*Mr - Mpr);
-    dL += -6773   * Math.sin(2*Dr + Mr);
-    dL += -6472   * Math.sin(4*Dr - 2*Mpr);
-    const longitude = Lp + dL / 1000000;
-    return norm360(longitude);
+    for (let i = 0; i < MOON_LON_TERMS.length; i++) {
+      const t = MOON_LON_TERMS[i];
+      let c = t[4];
+      const am = Math.abs(t[1]);
+      if (am === 1) c *= E; else if (am === 2) c *= E * E;
+      dL += c * Math.sin(t[0]*Dr + t[1]*Mr + t[2]*Mpr + t[3]*Fr);
+    }
+    // Additive terms (Venus, Jupiter, flattening)
+    const A1 = (119.75 + 131.849 * T) * D2R;
+    const A2 = (53.09 + 479264.290 * T) * D2R;
+    dL += 3958 * Math.sin(A1) + 1962 * Math.sin(Lp * D2R - Fr) + 318 * Math.sin(A2);
+    // Nutation in longitude (arcsec → deg), main terms
+    const Om = (125.04452 - 1934.136261 * T) * D2R;
+    const Ls = (280.4665 + 36000.7698 * T) * D2R;
+    const dpsi = (-17.20 * Math.sin(Om) - 1.32 * Math.sin(2*Ls) - 0.23 * Math.sin(2*Lp*D2R) + 0.21 * Math.sin(2*Om)) / 3600;
+    return norm360(Lp + dL / 1000000 + dpsi);
   }
 
   function sunMoonLongitudes(jd) {
@@ -842,8 +867,10 @@
     sec.style.display = '';
   }
   window.showChoghadiyaFull = function showChoghadiyaFull() {
+    spDetailOpening('page-choghadiya');
     pchRenderChoghadiyaFull();
     showSecondaryPage('page-choghadiya');
+    spDetailOpened();
   };
 
   // ── चंद्रबल / ताराबल ──
@@ -1157,7 +1184,7 @@
   }
 
   /* ── GPS permission modal (full-screen; only on app open, until a location exists) ──
-     Flow: consent checkbox -> GPS, or "continue with Jaipur, Rajasthan" as the fallback. */
+     Shown only when the direct GPS fetch at launch fails. Flow: retry GPS, or "continue with Jaipur, Rajasthan" as the fallback. */
   let pchGateBound = false, pchGateTried = false;
   function pchShowGpsGate(msg) {
     const g = document.getElementById('pch-gps-gate'); if (!g) return;
@@ -1166,8 +1193,7 @@
     document.getElementById('gps-gate-err').textContent = msg || '';
     const btn = document.getElementById('gps-gate-btn'), alt = document.getElementById('gps-jaipur-btn');
     btn.disabled = false; alt.disabled = false;
-    btn.textContent = msg ? 'दोबारा कोशिश करें' : 'हाँ, सटीक पंचांग दिखाएँ';
-    window.pchGateConsentChanged();
+    btn.textContent = 'दोबारा कोशिश करें';
     if (!pchGateBound) {
       pchGateBound = true;
       // Coming back from the phone/browser settings after a failed attempt: try again automatically.
@@ -1176,18 +1202,13 @@
         if (document.visibilityState === 'visible' && gg && !gg.hidden && PCH.lat === null && pchGateTried && !document.getElementById('gps-gate-btn').disabled) pchGateStart();
       });
     }
-    try { document.getElementById('gps-consent-cb').focus(); } catch (e) { /* ignore */ }
+    try { btn.focus(); } catch (e) { /* ignore */ }
   }
   function pchHideGpsGate() {
     const g = document.getElementById('pch-gps-gate');
     if (g) g.hidden = true;
     document.body.style.overflow = '';
   }
-  window.pchGateConsentChanged = function () {
-    const cb = document.getElementById('gps-consent-cb'), btn = document.getElementById('gps-gate-btn');
-    btn.setAttribute('aria-disabled', cb.checked ? 'false' : 'true');
-    document.getElementById('gps-consent').classList.remove('need');
-  };
   function pchGateStart() {
     const btn = document.getElementById('gps-gate-btn');
     btn.disabled = true;
@@ -1196,17 +1217,8 @@
     pchGateTried = true;
     pchRequestGPS(true);
   }
-  // "GPS चालू करें": only after the consent box is ticked.
-  window.pchGateRetry = function () {
-    const cb = document.getElementById('gps-consent-cb');
-    if (!cb.checked) {
-      const row = document.getElementById('gps-consent');
-      row.classList.remove('need'); void row.offsetWidth; row.classList.add('need');
-      try { cb.focus(); } catch (e) { /* ignore */ }
-      return;
-    }
-    pchGateStart();
-  };
+  // Retry button: re-request the device GPS location.
+  window.pchGateRetry = function () { pchGateStart(); };
   // Fallback: no GPS -> Jaipur, Rajasthan, so the Panchang can still be calculated.
   window.pchGateUseJaipur = function () {
     PCH.lat = 26.9124; PCH.lon = 75.7873; PCH.name = 'Jaipur'; PCH.state = 'Rajasthan';
@@ -1289,31 +1301,23 @@
     );
   }
 
-  // Called automatically when the Panchang page opens with no location
-  // set yet. Location selector stays hidden and a lightweight loading
-  // indicator shows instead; permission state is checked first (where
-  // supported) so we don't surprise the user with a native prompt if
-  // they've already denied it — instead the selector is revealed right
-  // away with a clear explanation.
+  // Called automatically when the Panchang page opens with no location set yet.
+  // No consent step of our own: the device's current GPS location is requested
+  // directly (the browser/OS shows its own native permission prompt if needed).
+  // Only if that fails does the fallback modal (retry / Jaipur) appear.
   function pchAutoFetchGPS() {
     pchBusy.show('gps');
     pchShowGpsLoading(true);
     if (pchGpsUnavailable(true)) return;
-    // No native prompt before the user has seen the explanation and consented in our own modal.
-    function askConsent(msg) { pchBusy.hide(true); pchShowGpsLoading(false); pchShowGpsGate(msg || ''); }
     if (navigator.permissions && navigator.permissions.query) {
       navigator.permissions.query({ name: 'geolocation' }).then((status) => {
-        status.onchange = function () {   // allowed from settings while the modal is open
+        status.onchange = function () {   // allowed from settings while the fallback modal is open
           const gg = document.getElementById('pch-gps-gate');
           if (status.state === 'granted' && PCH.lat === null && gg && !gg.hidden && !document.getElementById('gps-gate-btn').disabled) pchGateStart();
         };
-        if (status.state === 'granted') { pchRequestGPS(true); return; }   // already allowed earlier: no modal needed
-        if (status.state === 'denied') { askConsent(PCH_GPS_GATE_DENIED_MSG); return; }
-        askConsent('');                                                    // 'prompt': explain + consent first
-      }).catch(() => askConsent(''));
-    } else {
-      askConsent('');
+      }).catch(() => {});
     }
+    pchRequestGPS(true);
   }
 
   /* ══════════════════════════════════════════════════════════════════
@@ -2571,8 +2575,10 @@
     const t = pchCalToday();
     pchVratMon.y = t.y; pchVratMon.m = t.m;     // always open on the current month
     pchVratBindSwipe();
+    spDetailOpening('page-vrattyohar');
     pchRenderVratTyoharFull();
     showSecondaryPage('page-vrattyohar');
+    spDetailOpened();
   };
 
   /* ══════════════════════════════════════════════════════════════════
@@ -3343,8 +3349,10 @@
     const t = pchCalToday();
     pchHolMon.y = t.y; pchHolMon.m = t.m;       // always open on the current month
     pchHolBindSwipe();
+    spDetailOpening('page-holidays');
     pchRenderHolidaysFull();
     showSecondaryPage('page-holidays');
+    spDetailOpened();
   };
 
   /* ══════════════════════════════════════════════════════════════════
@@ -3532,7 +3540,7 @@
       const pakshaFull = masaOf[d - 1] + ' ' + (info.krishna ? 'कृष्ण' : 'शुक्ल') + ' पक्ष';
       html += '<button type="button" class="' + cls + '" onclick="pchCalSelect(' + y + ',' + m + ',' + d + ')" aria-label="' + d + ' ' + MONTH_NAMES_HI[m] + ' ' + pakshaFull + ' ' + info.name + '"'
             + (isSel ? ' aria-pressed="true"' : '') + '>'
-            + '<span class="pch-cal-num">' + d + '</span><span class="pch-cal-tithi">' + info.name + '</span><span class="pch-cal-paksha" data-p="' + pk.join('|') + '">' + paksha + '</span>'
+            + '<span class="pch-cal-num">' + d + '</span><span class="pch-cal-tithi' + (info.idx === 14 ? ' is-purnima' : (info.idx === 29 ? ' is-amavasya' : '')) + '">' + info.name + '</span><span class="pch-cal-paksha" data-p="' + pk.join('|') + '">' + paksha + '</span>'
             + '<span class="pch-cal-nak">' + info.nak + '</span><span class="pch-cal-fest">' + pchCalFestText(md && md.days[d]) + '</span></button>';
     }
     grid.innerHTML = html;
@@ -3710,6 +3718,7 @@
       if (ours && gen === pchCalcGeneration) pchBusy.hide();
     }
     if (typeof window.pchCalOnCalc === 'function') { try { window.pchCalOnCalc(); } catch (e) {} }
+    spReapplyScroll();
   };
 
   async function pchRunCalculationInner() {
@@ -4307,7 +4316,7 @@
     eldStopTimer();
     eldTL = null;
     showSecondaryPage('page-panchang');
-    window.requestAnimationFrame(function () { window.scrollTo(0, eldScrollY); });
+    spRestoreScroll(eldScrollY);
   }
   window.pchCloseElementDetail = function () {
     if (history.state && history.state.pchEld) history.back();   // popstate → eldClose()
@@ -4341,6 +4350,68 @@
   })();
 
 })();
+
+/* ── Detail-page navigation: remember the main page's scroll position and restore it on Back ──
+   Used by the "सम्पूर्ण चौघड़िया / व्रत-त्योहार / अवकाश" pages (the tithi-element detail page keeps its
+   own history entry in the module above but restores through the same spRestoreScroll). Both the in-app
+   Back button and the Android/browser Back (popstate) end in spReturnToMain(). */
+var spDetail = null;        // { page, y, pushed } while one of the three detail pages is open
+var spPendingDetail = null; // captured just before the page is shown (showSecondaryPage scrolls to top)
+var spRestore = null;       // { y, until, cancelled, stop } while a restore is being enforced
+function spMainVisible() {
+  var m = document.getElementById('page-panchang');
+  return !!m && m.style.display !== 'none';
+}
+function spDetailOpening(pageId) {
+  spPendingDetail = { page: pageId, y: spMainVisible() ? (window.pageYOffset || document.documentElement.scrollTop || 0) : 0, pushed: false };
+}
+function spDetailOpened() {
+  if (!spPendingDetail) return;
+  spDetail = spPendingDetail; spPendingDetail = null;
+  try { history.pushState({ spDetail: spDetail.page }, ''); spDetail.pushed = true; } catch (e) { /* ignore */ }
+}
+function spDetailIsOpen() {
+  if (!spDetail) return false;
+  var el = document.getElementById(spDetail.page);
+  return !!el && el.style.display !== 'none';
+}
+function spReturnToMain() {
+  var y = spDetail ? spDetail.y : 0;
+  spDetail = null;
+  showSecondaryPage('page-panchang');
+  spRestoreScroll(y);
+}
+// In-app Back button: pop our history entry (→ popstate → spReturnToMain) so the entry never goes stale.
+window.spCloseDetail = function () {
+  if (spDetail && spDetail.pushed && history.state && history.state.spDetail) history.back();
+  else spReturnToMain();
+};
+window.addEventListener('popstate', function () { if (spDetailIsOpen()) spReturnToMain(); });
+
+// Re-applies the saved position for a moment: returning to the main page triggers a fresh
+// recalculation/re-render, which could otherwise clamp or reset the scroll. Any manual scroll
+// or touch by the user cancels it immediately.
+function spRestoreScroll(y) {
+  if (spRestore && spRestore.stop) spRestore.stop();
+  if (!y) return;
+  var evs = ['wheel', 'touchstart', 'keydown', 'mousedown'];
+  var r = { y: y, until: Date.now() + 3000, cancelled: false, stop: null };
+  r.stop = function () {
+    r.cancelled = true;
+    evs.forEach(function (e) { window.removeEventListener(e, r.stop, true); });
+    if (spRestore === r) spRestore = null;
+  };
+  evs.forEach(function (e) { window.addEventListener(e, r.stop, { capture: true, passive: true }); });
+  spRestore = r;
+  var go = function () { if (!r.cancelled) window.scrollTo(0, y); };
+  go();
+  window.requestAnimationFrame(go);
+  [60, 200, 500, 1000].forEach(function (t) { setTimeout(go, t); });
+  setTimeout(r.stop, 3000);
+}
+function spReapplyScroll() {
+  if (spRestore && !spRestore.cancelled && Date.now() < spRestore.until) window.scrollTo(0, spRestore.y);
+}
 
 function showSecondaryPage(pageId) {
     ['page-panchang', 'page-vrattyohar', 'page-holidays', 'page-choghadiya', 'page-element-detail', 'page-about', 'page-accountsettings',
