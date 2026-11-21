@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" href="favicon.png">
 <link rel="shortcut icon" href="favicon.png" type="image/png">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Figtree:wght@400;500;600;700&family=Tiro+Devanagari+Hindi&family=Hind:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20261120b">
+<link rel="stylesheet" href="styles.css?v=20261121k">
 </head>
 <body>
 
@@ -65,43 +65,64 @@
         📍 आपका स्थान पता किया जा रहा है…
       </div>
 
-      <!-- Location selection (hidden by default; shown automatically only
-           if the silent GPS auto-fetch on page-open fails) -->
+      <!-- Location / date / time picker. Opens as a popup over the panchang (or inline when the
+           silent GPS fetch failed on first open). Every choice is only a draft until "OK" is tapped;
+           tapping outside the popup, the × or Esc cancels and discards the draft. -->
       <div class="about-section" id="pch-location-section" style="display:none;" onclick="if(event.target===this &amp;&amp; this.classList.contains('is-popup'))pchCloseLocationPopup()">
-        <div class="pch-loc-sheet">
+        <div class="pch-loc-sheet" role="dialog" aria-modal="true" aria-labelledby="lm-title">
         <div class="pch-loc-head">
-          <div class="about-section-title">स्थान चुनें (Location)</div>
-          <button type="button" class="profile-modal-close pch-loc-close" onclick="pchCloseLocationPopup()" aria-label="बंद करें">×</button>
+          <div class="about-section-title" id="lm-title">स्थान, दिनांक व समय</div>
         </div>
-        <div class="about-card" id="pch-location-card">
-          <div class="pch-loc-btns" id="pch-loc-btns">
-            <button class="pch-loc-btn" onclick="pchUseGPS()">📍 वर्तमान GPS स्थान</button>
-            <button class="pch-loc-btn" onclick="pchShowManualEntry()">✍️ स्थान का नाम लिखें</button>
-          </div>
-          <div id="pch-manual-entry" style="display:none; margin-top:14px;">
-            <input type="text" id="pch-manual-input" placeholder="शहर / कस्बे का नाम लिखें (जैसे Beawar, Ajmer)" style="width:100%; padding:12px 14px; border-radius:14px; border:1px solid var(--border); font-family:'Figtree','Hind',sans-serif; font-size:14px; background:rgba(255,255,255,0.7);">
-            <button class="pch-loc-btn" style="margin-top:8px;" onclick="pchSearchManualLocation()">स्थान खोजें</button>
-          </div>
+        <div class="about-card lm-card" id="pch-location-card">
 
-          <!-- Date & time — defaults to "अभी" (live); can be overridden to
-               see the panchang for a specific place & timestamp. Read at
-               the moment a location is chosen below, or applied on its
-               own via "लागू करें" if the location is already set. -->
-          <div id="pch-datetime-block" style="display:none; margin-top:14px; padding-top:14px; border-top:1px dashed var(--border);">
-            <div style="font-size:11.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:8px;">दिनांक व समय (Date &amp; Time)</div>
-            <div style="display:flex; gap:8px;">
-              <input type="date" id="pch-dt-date" style="flex:1.2; min-width:0; padding:10px 10px; border-radius:12px; border:1px solid var(--border); font-family:'Figtree','Hind',sans-serif; font-size:13px; background:rgba(255,255,255,0.7); color:var(--ink);">
-              <input type="time" id="pch-dt-time" style="flex:1; min-width:0; padding:10px 10px; border-radius:12px; border:1px solid var(--border); font-family:'Figtree','Hind',sans-serif; font-size:13px; background:rgba(255,255,255,0.7); color:var(--ink);">
-            </div>
-            <div style="display:flex; gap:8px; margin-top:8px;">
-              <button class="pch-loc-btn" style="flex:1;" onclick="pchApplyDateTimeOnly()">✅ इसी समय हेतु लागू करें</button>
-              <button class="pch-loc-btn" style="flex:1;" onclick="pchResetToLiveDateTime()">🔴 अभी (Live)</button>
+          <!-- 1 · दिनांक -->
+          <div class="lm-sec lm-sec-hide-inline" id="lm-sec-date">
+            <div class="lm-head"><span class="lm-ico" aria-hidden="true">📅</span><span class="lm-label">दिनांक</span><span class="lm-val" id="lm-date-val">—</span></div>
+            <div class="lm-row lm-row-date">
+              <button type="button" class="lm-btn" id="lm-today" aria-pressed="false" onclick="lmPickToday()">आज</button>
+              <span class="lm-or">or</span>
+              <input type="date" id="lm-date" class="lm-input" aria-label="दिनांक चुनें">
             </div>
           </div>
 
-          <div id="pch-location-status" style="margin-top:14px; font-size:13px; color:var(--ink-soft);"></div>
-          <div style="margin-top:14px; font-size:12px; color:var(--ink-soft); line-height:1.5; border-top:1px dashed var(--border); padding-top:14px;">
-            <strong>नोट:</strong> आपके वर्तमान स्थान से पंचांग की गणना और परिणाम बदल जाते हैं। सटीक पंचांग जानने के लिए हमेशा अपनी GPS location का ही उपयोग करें।
+          <!-- 2 · समय -->
+          <div class="lm-sec lm-sec-hide-inline" id="lm-sec-time">
+            <div class="lm-head"><span class="lm-ico" aria-hidden="true">🕐</span><span class="lm-label">समय</span><span class="lm-val" id="lm-time-val">—</span></div>
+            <div class="lm-row lm-row-time">
+              <div class="lm-quick">
+                <button type="button" class="lm-btn" id="lm-now" aria-pressed="false" onclick="lmPickNow()"><span class="lm-live-dot" aria-hidden="true"></span><span>अभी</span></button>
+                <span class="lm-or">or</span>
+                <button type="button" class="lm-btn lm-btn-withico" id="lm-sunrise" aria-pressed="false" onclick="lmPickSunrise()">
+                  <svg class="lm-btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18h18"/><path d="M7 18a5 5 0 0 1 10 0"/><path d="M12 5v4M12 5l-2 2M12 5l2 2"/><path d="M4.6 12.2l1.6 1.2M19.4 12.2l-1.6 1.2"/></svg>
+                  <span>सूर्योदय</span>
+                </button>
+              </div>
+              <span class="lm-or">or</span>
+              <input type="time" id="lm-time" class="lm-input" aria-label="समय चुनें">
+            </div>
+          </div>
+
+          <!-- 3 · स्थान -->
+          <div class="lm-sec" id="lm-sec-loc">
+            <div class="lm-head"><span class="lm-ico" aria-hidden="true">📍</span><span class="lm-label">स्थान</span><span class="lm-val" id="lm-loc-val">—</span></div>
+            <div class="lm-loc-row">
+              <button type="button" class="lm-btn lm-btn-withico lm-gps" id="lm-gps" aria-pressed="false" onclick="lmUseGPS()">
+                <svg class="lm-btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5s-6.5-6.1-6.5-11a6.5 6.5 0 0 1 13 0c0 4.9-6.5 11-6.5 11z"/><circle cx="12" cy="10.5" r="2.4"/></svg>
+                <span id="lm-gps-text">GPS</span>
+              </button>
+              <span class="lm-or">or</span>
+              <div class="lm-search" id="lm-search">
+                <svg class="lm-search-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>
+                <input type="text" id="lm-search-input" placeholder="शहर / कस्बा खोजें" autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="search" role="combobox" aria-expanded="false" aria-controls="lm-results" aria-label="स्थान खोजें">
+                <span class="lm-search-tick" aria-hidden="true">✓</span>
+              </div>
+            </div>
+            <ul class="lm-results" id="lm-results" role="listbox" hidden></ul>
+            <div class="lm-status" id="pch-location-status" role="status" aria-live="polite"></div>
+          </div>
+
+          <div class="lm-actions">
+            <button type="button" class="lm-ok" id="lm-ok" onclick="lmConfirm()">OK</button>
           </div>
         </div>
         </div>
@@ -250,7 +271,7 @@
 
         <!-- Geo & Timestamp: date + day and time on one line, location below (read-only; time is the only editable field) -->
         <div class="about-section">
-          <div class="about-section-title">Geo &amp; Timestamp</div>
+          <div class="about-section-title">स्थान, समय व दिनांक</div>
           <div class="about-card pch-gt">
             <div class="pch-gt-stamp">
               <div class="pch-gt-field pch-gt-field--date">
@@ -267,7 +288,7 @@
               <span class="pch-gt-ico" aria-hidden="true">📍</span>
               <div class="pch-gt-val pch-gt-placeval" id="pch-cal-loc"></div>
             </div>
-            <div class="pch-cal-calc-note"><strong>Note:</strong> पंचांग की गणना चुने गए समय, दिनांक व स्थान के आधार पर की जाती है।</div>
+            <div class="pch-cal-calc-note"><strong>Note:</strong> पंचांग की गणना समय, दिनांक व स्थान के आधार पर की जाती है।</div>
           </div>
         </div>
 
@@ -429,8 +450,8 @@
       <div class="about-section">
         <div class="about-section-title">Version</div>
         <div class="about-card">
-          <p><strong>Version 3.2.8</strong></p>
-          <p>Released on 20 November 2026</p>
+          <p><strong>Version 3.3.6</strong></p>
+          <p>Released on 21 November 2026</p>
         </div>
       </div>
 
@@ -622,7 +643,42 @@
     </div>
   </div>
 
-<script src="panchang.js?v=20261120b"></script>
+  <!-- ── GPS PERMISSION MODAL (app open): consent → GPS, or Jaipur fallback. Never shown again once a location exists. ── -->
+  <div id="pch-gps-gate" class="gps-gate" role="dialog" aria-modal="true" aria-labelledby="gps-gate-title" aria-describedby="gps-gate-why" lang="hi" hidden>
+    <div class="gps-gate-card">
+      <div class="gps-hero">
+        <div class="gps-pin" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.6"/></svg>
+        </div>
+        <div class="gps-gate-title" id="gps-gate-title">पंचांग गणना के लिए स्थान चुनें</div>
+      </div>
+
+      <div class="gps-body">
+        <div class="gps-why" id="gps-gate-why">
+          <div class="gps-why-h">GPS Location क्यों ज़रूरी है?</div>
+          <p>पंचांग की गणना, तिथि और त्योहार आपके स्थान से प्रभावित होते हैं। सूर्योदय-सूर्यास्त हर शहर में अलग होते हैं, इसलिए <strong>तिथि और त्योहार आपके स्थान के अनुसार बदल जाते हैं।</strong> अपना सटीक पंचांग जानने के लिए हमेशा अपनी GPS Location का ही उपयोग करें।</p>
+        <label class="gps-consent" id="gps-consent">
+          <input type="checkbox" id="gps-consent-cb" onchange="pchGateConsentChanged()">
+          <span class="gps-consent-box" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 4.8"/></svg></span>
+          <span class="gps-consent-txt">मैं सटीक पंचांग के लिए अपनी वर्तमान GPS location के उपयोग की अनुमति देता/देती हूँ।</span>
+        </label>
+        </div>
+
+        <div class="gps-gate-err" id="gps-gate-err" role="alert" aria-live="assertive"></div>
+
+
+
+        <button type="button" class="gps-gate-btn" id="gps-gate-btn" aria-disabled="true" onclick="pchGateRetry()">हाँ, सटीक पंचांग दिखाएँ</button>
+
+        <div class="gps-or"><span>या</span></div>
+
+        <button type="button" class="gps-alt-btn" id="gps-jaipur-btn" onclick="pchGateUseJaipur()">जयपुर, राजस्थान का पंचांग देखें</button>
+
+      </div>
+    </div>
+  </div>
+
+<script src="panchang.js?v=20261121k"></script>
 <script src="tour.js?v=20261116d"></script>
 </body>
 </html>
