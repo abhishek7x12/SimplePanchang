@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" href="favicon.png">
 <link rel="shortcut icon" href="favicon.png" type="image/png">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Figtree:wght@400;500;600;700&family=Tiro+Devanagari+Hindi&family=Hind:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20261121k">
+<link rel="stylesheet" href="styles.css?v=20261121u">
 </head>
 <body>
 
@@ -148,13 +148,34 @@
         </div>
       </div>
 
+        <!-- Geo & Timestamp: date + day and time on one line, location below (read-only; time is the only editable field) -->
+        <div class="about-section">
+          <div class="about-card pch-gt">
+            <div class="pch-gt-stamp">
+              <div class="pch-gt-field pch-gt-field--date">
+                <span class="pch-gt-ico" aria-hidden="true">📅</span>
+                <div class="pch-gt-val" id="pch-cal-date"></div>
+              </div>
+              <div class="pch-gt-field pch-gt-field--time">
+                <span class="pch-gt-ico" aria-hidden="true">🕐</span>
+                <span class="pch-gt-val pch-gt-time" id="pch-cal-time-input"></span>
+              </div>
+            </div>
+            <div class="pch-gt-note" id="pch-cal-time-note"></div>
+            <div class="pch-gt-place">
+              <span class="pch-gt-ico" aria-hidden="true">📍</span>
+              <div class="pch-gt-val pch-gt-placeval"><span class="pch-gt-placename" id="pch-cal-loc"></span></div>
+              <button type="button" class="pch-gt-change" id="pch-badle-btn" onclick="pchOpenLocationSelector()">Change</button>
+            </div>
+          </div>
+          <div class="pch-cal-calc-note pch-gt-foot"><strong>Note:</strong> पंचांग की गणना समय, दिनांक व स्थान के आधार पर की जाती है।</div>
+        </div>
+
         <!-- Date -->
         <div class="about-section">
           <div class="about-section-title">पंचांग तिथि</div>
           <div class="about-card">
             <div class="pch-grid">
-              <div class="pch-item"><div class="pch-label">दिनांक</div><div class="pch-value" id="pch-date-summary"></div></div>
-              <div class="pch-item"><div class="pch-label">समय</div><div class="pch-value" id="pch-time-summary"></div></div>
               <div class="pch-item pch-tap" data-eld="samvat" role="button" tabindex="0" aria-label="विक्रम संवत — विस्तृत समय-रेखा देखें"><div class="pch-label">विक्रम संवत</div><div class="pch-value" id="pch-tatva-samvat"></div></div>
               <div class="pch-item pch-tap" data-eld="masa" role="button" tabindex="0" aria-label="पूर्णिमांत मास — विस्तृत समय-रेखा देखें"><div class="pch-label">पूर्णिमांत मास</div><div class="pch-value" id="pch-purnimant-masa"></div></div>
               <div class="pch-item pch-tap" data-eld="paksha" role="button" tabindex="0" aria-label="पक्ष — विस्तृत समय-रेखा देखें"><div class="pch-label">पक्ष</div><div class="pch-value" id="pch-paksha"></div></div>
@@ -222,7 +243,7 @@
 
         <!-- Muhurat / Kaal -->
         <div class="about-section">
-          <div class="about-section-title">शुभ-अशुभ</div>
+          <div class="about-section-title">काल</div>
           <div class="about-card">
             <div class="pch-grid" id="pch-muhurt-grid"></div>
           </div>
@@ -269,33 +290,6 @@
           </div>
         </div>
 
-        <!-- Geo & Timestamp: date + day and time on one line, location below (read-only; time is the only editable field) -->
-        <div class="about-section">
-          <div class="about-section-title">स्थान, समय व दिनांक</div>
-          <div class="about-card pch-gt">
-            <div class="pch-gt-stamp">
-              <div class="pch-gt-field pch-gt-field--date">
-                <span class="pch-gt-ico" aria-hidden="true">📅</span>
-                <div class="pch-gt-val" id="pch-cal-date"></div>
-              </div>
-              <div class="pch-gt-field pch-gt-field--time">
-                <span class="pch-gt-ico" aria-hidden="true">🕐</span>
-                <span class="pch-gt-val pch-gt-time" id="pch-cal-time-input"></span>
-              </div>
-            </div>
-            <div class="pch-gt-note" id="pch-cal-time-note"></div>
-            <div class="pch-gt-place">
-              <span class="pch-gt-ico" aria-hidden="true">📍</span>
-              <div class="pch-gt-val pch-gt-placeval" id="pch-cal-loc"></div>
-            </div>
-            <div class="pch-cal-calc-note"><strong>Note:</strong> पंचांग की गणना समय, दिनांक व स्थान के आधार पर की जाती है।</div>
-          </div>
-        </div>
-
-      </div>
-
-      <div id="pch-badle-bar" style="display:none; justify-content:center; margin-top:28px;">
-        <button onclick="pchOpenLocationSelector()" style="font-size:13px; font-weight:700; color:var(--saffron); background:var(--saffron-pale); border:1px solid var(--saffron); border-radius:999px; cursor:pointer; padding:9px 18px;">Change Location &amp; Time</button>
       </div>
 
       <div class="about-footer" data-footer="disclaimer-pch"></div>
@@ -450,7 +444,7 @@
       <div class="about-section">
         <div class="about-section-title">Version</div>
         <div class="about-card">
-          <p><strong>Version 3.3.6</strong></p>
+          <p><strong>Version 3.3.8</strong></p>
           <p>Released on 21 November 2026</p>
         </div>
       </div>
@@ -678,7 +672,7 @@
     </div>
   </div>
 
-<script src="panchang.js?v=20261121k"></script>
-<script src="tour.js?v=20261116d"></script>
+<script src="panchang.js?v=20261121u"></script>
+<script src="tour.js?v=20261121t"></script>
 </body>
 </html>
