@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" href="favicon.png">
 <link rel="shortcut icon" href="favicon.png" type="image/png">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Figtree:wght@400;500;600;700&family=Tiro+Devanagari+Hindi&family=Hind:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20261121u">
+<link rel="stylesheet" href="styles.css?v=20261121v">
 </head>
 <body>
 
@@ -168,7 +168,6 @@
               <button type="button" class="pch-gt-change" id="pch-badle-btn" onclick="pchOpenLocationSelector()">Change</button>
             </div>
           </div>
-          <div class="pch-cal-calc-note pch-gt-foot"><strong>Note:</strong> पंचांग की गणना समय, दिनांक व स्थान के आधार पर की जाती है।</div>
         </div>
 
         <!-- Date -->
@@ -300,7 +299,7 @@
   <!-- ── FULL VRAT / TYOHAR LIST PAGE ── -->
   <div class="about-page" id="page-vrattyohar" style="display:none;" lang="hi">
     <div class="about-banner">
-      <button class="profile-back" onclick="showSecondaryPage('page-panchang')">
+      <button class="profile-back" onclick="spCloseDetail()">
         <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
       </button>
       <div class="ab-title">व्रत त्योहार सूची</div>
@@ -324,7 +323,7 @@
   <!-- ── FULL PUBLIC HOLIDAYS LIST PAGE ── -->
   <div class="about-page" id="page-holidays" style="display:none;" lang="hi">
     <div class="about-banner">
-      <button class="profile-back" onclick="showSecondaryPage('page-panchang')">
+      <button class="profile-back" onclick="spCloseDetail()">
         <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
       </button>
       <div class="ab-title">सार्वजनिक अवकाश सूची</div>
@@ -349,7 +348,7 @@
   <!-- ── FULL CHOGHADIYA PAGE ── -->
   <div class="about-page" id="page-choghadiya" style="display:none;" lang="hi">
     <div class="about-banner">
-      <button class="profile-back" onclick="showSecondaryPage('page-panchang')" aria-label="वापस जाएँ">
+      <button class="profile-back" onclick="spCloseDetail()" aria-label="वापस जाएँ">
         <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
       </button>
       <div class="ab-title">चौघड़िया</div>
@@ -444,7 +443,7 @@
       <div class="about-section">
         <div class="about-section-title">Version</div>
         <div class="about-card">
-          <p><strong>Version 3.3.8</strong></p>
+          <p><strong>Version 3.3.9</strong></p>
           <p>Released on 21 November 2026</p>
         </div>
       </div>
@@ -637,7 +636,7 @@
     </div>
   </div>
 
-  <!-- ── GPS PERMISSION MODAL (app open): consent → GPS, or Jaipur fallback. Never shown again once a location exists. ── -->
+  <!-- ── GPS FALLBACK MODAL: app launch fetches the device GPS location directly (no consent checkbox). This modal appears only if GPS could not be obtained (denied / unavailable / timeout): retry GPS, or Jaipur fallback. Never shown once a location exists. ── -->
   <div id="pch-gps-gate" class="gps-gate" role="dialog" aria-modal="true" aria-labelledby="gps-gate-title" aria-describedby="gps-gate-why" lang="hi" hidden>
     <div class="gps-gate-card">
       <div class="gps-hero">
@@ -651,18 +650,13 @@
         <div class="gps-why" id="gps-gate-why">
           <div class="gps-why-h">GPS Location क्यों ज़रूरी है?</div>
           <p>पंचांग की गणना, तिथि और त्योहार आपके स्थान से प्रभावित होते हैं। सूर्योदय-सूर्यास्त हर शहर में अलग होते हैं, इसलिए <strong>तिथि और त्योहार आपके स्थान के अनुसार बदल जाते हैं।</strong> अपना सटीक पंचांग जानने के लिए हमेशा अपनी GPS Location का ही उपयोग करें।</p>
-        <label class="gps-consent" id="gps-consent">
-          <input type="checkbox" id="gps-consent-cb" onchange="pchGateConsentChanged()">
-          <span class="gps-consent-box" aria-hidden="true"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 4.8"/></svg></span>
-          <span class="gps-consent-txt">मैं सटीक पंचांग के लिए अपनी वर्तमान GPS location के उपयोग की अनुमति देता/देती हूँ।</span>
-        </label>
         </div>
 
         <div class="gps-gate-err" id="gps-gate-err" role="alert" aria-live="assertive"></div>
 
 
 
-        <button type="button" class="gps-gate-btn" id="gps-gate-btn" aria-disabled="true" onclick="pchGateRetry()">हाँ, सटीक पंचांग दिखाएँ</button>
+        <button type="button" class="gps-gate-btn" id="gps-gate-btn" onclick="pchGateRetry()">हाँ, सटीक पंचांग दिखाएँ</button>
 
         <div class="gps-or"><span>या</span></div>
 
@@ -672,7 +666,7 @@
     </div>
   </div>
 
-<script src="panchang.js?v=20261121u"></script>
-<script src="tour.js?v=20261121t"></script>
+<script src="panchang.js?v=20261121y"></script>
+<script src="tour.js?v=20261121v"></script>
 </body>
 </html>
