@@ -1,7 +1,8 @@
 /* ============================================================================
-   PRODUCT TOUR — spotlight walkthrough for first-time users: welcome → today's
-   panchang → the tap-for-timeline feature (demonstrated live on the real detail
-   page) → location/time button → header tools.
+   PRODUCT TOUR — spotlight walkthrough for first-time users, in the same top-to-bottom
+   order as the page: welcome → calendar → Geo Timestamp (place/date/time + Change) →
+   tap-for-timeline (demonstrated live on the real detail page) → sections below
+   (choghadiya, shubh-ashubh, vrat) → header tools (settings, profile).
    Replay any time from ⚙️ → App Tour (spStartTour()).
    State lives in localStorage under pch_tour_state (cleared by "Delete my data").
    ============================================================================ */
@@ -69,40 +70,36 @@
   /* ── step catalogue ── */
   var STEPS = {
     welcome: { page: 'main', center: true, art: '🙏', title: 'सिंपल पंचांग में स्वागत है',
-      body: 'आपके स्थान और समय के अनुसार आज का पंचांग — तिथि, नक्षत्र, मुहूर्त और व्रत-त्योहार एक ही जगह। आइए एक मिनट में देखें कि यह कैसे काम करता है।',
+      body: 'आपके स्थान और समय के अनुसार आज का पंचांग — तिथि, नक्षत्र, चौघड़िया और व्रत-त्योहार एक ही जगह। आइए एक मिनट में देखें कि यह कैसे काम करता है।',
       next: 'शुरू करें', skip: 'अभी नहीं' },
 
-    date: { page: 'main', target: function () { return q('#pch-content > .about-section .about-card'); },
-      title: 'आज की तिथि',
-      body: 'यहाँ आज की तारीख, विक्रम संवत, मास, पक्ष, तिथि और ऋतु दिखती है। सब कुछ आपकी GPS location और अभी के समय के अनुसार निकाला जाता है।' },
+    cal: { page: 'main', target: function () { return q('#pch-cal-block .pch-cal-card'); },
+      title: 'पंचांग कैलेंडर',
+      body: 'पूरे महीने का पंचांग — हर तारीख़ पर तिथि, नक्षत्र और व्रत-त्योहार। किसी तारीख़ को छूते ही नीचे का पूरा पंचांग उस दिन के सूर्योदय के अनुसार बदल जाता है। महीना बदलने के लिए ‹ › दबाएँ या उँगली से सरकाएँ।' },
 
-    tap: { page: 'main', badge: true, hand: true, target: function () { return q('.pch-item[data-eld="tithi"]'); },
+    geo: { page: 'main', target: function () { return q('#pch-cal-loc') && q('#pch-cal-loc').closest('.about-card'); },
+      title: 'किस स्थान, दिन और समय का पंचांग',
+      body: 'नीचे का पूरा पंचांग यहाँ लिखे दिनांक, समय और स्थान के अनुसार निकला है। किसी दूसरे शहर, तारीख़ या समय का पंचांग देखना हो तो “Change” बटन दबाएँ।' },
+
+    tap: { page: 'main', hand: true, target: function () { return q('.pch-item[data-eld="tithi"]'); },
       title: 'किसी भी बॉक्स को छुएँ',
-      body: 'तिथि, नक्षत्र, योग, करण, राशि, मास, पक्ष, ऋतु, अयन और विक्रम संवत को छूने पर उसकी पूरी समय-रेखा खुलती है — पिछला क्या था, अभी क्या है और आगे क्या आएगा।',
+      body: 'तिथि, नक्षत्र, योग, करण, राशि, मास, पक्ष, ऋतु, अयन और विक्रम संवत — किसी को भी छूने पर उसकी पूरी समय-रेखा खुलती है: पिछला क्या था, अभी क्या है और आगे क्या आएगा।',
       next: 'खोलकर देखें' },
 
-    d1: { page: 'detail', badge: true,
+    d1: { page: 'detail',
       target: function () { return q('#eld-timeline .eld-seg--current') || q('#eld-timeline .eld-seg-card'); },
       title: 'बदलाव का समय और अभी कितना बीता',
-      body: 'बाईं पट्टी के हर बिंदु के साथ वह सटीक समय लिखा है जब एक तिथि समाप्त होती है और अगली शुरू होती है। वर्तमान तिथि के कार्ड की प्रगति पट्टी बताती है कि कितना समय बीता, कितना शेष है और कुल कितने प्रतिशत — यह अपने-आप अपडेट होती रहती है।' },
+      body: 'हर बिंदु के साथ वह सटीक समय लिखा है जब एक तिथि समाप्त होती है और अगली शुरू होती है। वर्तमान कार्ड की प्रगति पट्टी बताती है कि कितना समय बीता और कितना शेष है।' },
 
-    cal: { page: 'main', badge: true,
-      target: function () { return q('#pch-cal-block .pch-cal-card'); },
-      title: 'पंचांग कैलेंडर',
-      body: 'पूरे महीने का पंचांग हमेशा सबसे ऊपर — हर तारीख़ पर पक्ष, तिथि, नक्षत्र और व्रत-त्योहार या अवकाश का नाम। किसी तारीख़ को छूते ही उस दिन के सूर्योदय के अनुसार नीचे का पूरा पंचांग बदल जाता है, और आप चाहें तो समय भी बदल सकते हैं। महीना बदलने के लिए ‹ › दबाएँ या उँगली से सरकाएँ।' },
+    more: { page: 'main', target: function () { var e = q('#pch-choghadiya-list'); return e && e.closest('.about-section'); },
+      title: 'चौघड़िया, काल और व्रत-त्योहार',
+      body: 'नीचे चौघड़िया, काल (राहुकाल, अभिजित आदि), मुहूर्त, व्रत-त्योहार और सार्वजनिक अवकाश हैं। “सम्पूर्ण … देखें” बटन से पूरी सूची खुलती है।' },
 
-    place: { page: 'main', target: function () { return q('#pch-badle-bar button'); },
-      title: 'स्थान व समय बदलें',
-      body: 'किसी दूसरे शहर का, या किसी और तारीख़ और समय का पंचांग देखना हो तो यह बटन दबाएँ।' },
-
-    header: { page: 'main', target: function () { return q('.header-actions'); },
+    header: { page: 'main', last: true, target: function () { return q('.header-actions'); },
       title: 'सेटिंग्स और प्रोफ़ाइल',
-      body: '⚙️ से डार्क मोड, सहायता और संपर्क। 👤 प्रोफ़ाइल में अपना जन्म विवरण भरें — तभी आपका चंद्रबल और ताराबल दिखेगा।' },
-
-    done: { page: 'main', center: true, art: '✅', title: 'सब तैयार!',
-      body: 'यह परिचय दोबारा देखना हो तो कभी भी ⚙️ → App Tour चुनें।', next: 'पंचांग देखें', last: true }
+      body: '⚙️ से डार्क मोड, संपर्क और यह टूर दोबारा देखें। 👤 प्रोफ़ाइल में अपना जन्म विवरण भरें — तभी आपका चंद्रबल और ताराबल दिखेगा।' }
   };
-  var FLOW = ['welcome', 'cal', 'date', 'place', 'header', 'tap', 'd1', 'done'];
+  var FLOW = ['welcome', 'cal', 'geo', 'tap', 'd1', 'more', 'header'];
 
   /* ── DOM ── */
   var root, spot, tip, hand, refs = {};
@@ -251,6 +248,7 @@
     var el = st.target ? st.target() : null;
     var tw = tip.offsetWidth, th = tip.offsetHeight;
     var left, top;
+    root.classList.toggle('is-center', !!st.center || !el);   // no target found: dim + centre instead of a stray tip
     if (!el || st.center) {
       spot.style.opacity = '0';
       hand.style.opacity = '0';
@@ -325,7 +323,11 @@
     return !!c && c.style.display === 'block' && !!t && t.textContent.trim().length > 0 && !detailOpen();
   }
   function modalOpen() {
-    return BLOCKING_MODALS.some(function (id) { var e = $(id); return e && e.style.display === 'flex'; });
+    if (BLOCKING_MODALS.some(function (id) { var e = $(id); return e && e.style.display === 'flex'; })) return true;
+    var loc = $('pch-location-section');                 // location · date · time popup
+    if (loc && loc.classList.contains('is-popup') && loc.style.display !== 'none') return true;
+    var gate = $('pch-gps-gate');                        // first-open GPS permission gate
+    return !!gate && !gate.hidden;
   }
 
   function tourDue() {
