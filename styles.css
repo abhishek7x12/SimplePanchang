@@ -620,7 +620,7 @@ body.dark-mode .profile-input, body.dark-mode .lm-input,
 body.dark-mode #lm-search-input { color-scheme: dark; }
 body.dark-mode .profile-btn-secondary { color: var(--ink); }
 body.dark-mode .profile-back { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.2); }
-body.dark-mode #pch-badle-bar button { color: #B9B6F5 !important; border-color: var(--saffron) !important; }
+body.dark-mode .pch-gt-change { color: #B9B6F5; border-color: var(--saffron); }
 body.dark-mode .about-footer a { color: #B9B6F5 !important; }
 body.dark-mode .header-avatar { border-color: rgba(255,255,255,0.7); }
 
@@ -989,6 +989,10 @@ body.dark-mode .pch-cal-time-input { color-scheme:dark; }
 .pch-cal-empty, .pch-cal-empty.pch-cal-cell { border-color:transparent; }
 .pch-cal-cell.is-today { border-color:var(--saffron); box-shadow:inset 0 0 0 1px var(--saffron); }
 .pch-cal-cell.is-sel { border-color:var(--saffron); }
+/* weekday header of the selected date: same active look as the selected date box; Sunday keeps its red text */
+.pch-cal-dow span.is-sel { background:var(--saffron); border-color:var(--saffron); color:#fff; }
+.pch-cal-dow span.is-sel:first-child { color:#C0392B; }
+body.dark-mode .pch-cal-dow span.is-sel:first-child { color:#FF8A7A; }
 
 /* ── Panchang Calendar: stronger tithi text in date cells ── */
 .pch-cal-tithi { font-weight:700; color:var(--ink); }
@@ -1066,8 +1070,8 @@ body.dark-mode .pch-mdate-label { color: #6FD09A; }
 .pch-mdate-month { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; width: 118px; padding: 6px 8px; border-radius: 999px; background: var(--saffron); color: #fff; font-size: 12px; font-weight: 700; line-height: 1.2; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
 
 /* ── Geo & Timestamp card ── */
-.pch-gt { padding: 4px 18px 12px; scroll-margin-top: 12px; }
-.pch-gt-stamp { display: flex; align-items: center; padding: 14px 0 12px; }
+.pch-gt { padding: 4px 20px; scroll-margin-top: 12px; }
+.pch-gt-stamp { display: flex; align-items: center; padding: 10px 0 12px; }
 .pch-gt-field { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .pch-gt-field--date { flex: 1 1 auto; padding-right: 12px; }
 .pch-gt-field--time { flex: 0 0 auto; margin-left: auto; padding-left: 12px; border-left: 1px solid var(--border); }
@@ -1075,11 +1079,12 @@ body.dark-mode .pch-mdate-label { color: #6FD09A; }
 .pch-gt-val { min-width: 0; font-size: 15px; font-weight: 700; line-height: 1.3; color: var(--ink); }
 .pch-gt-note { margin: -2px 0 10px; font-size: 11.5px; line-height: 1.4; color: var(--ink-soft); }
 .pch-gt-note:empty { display: none; }
-.pch-gt-place { display: flex; align-items: center; gap: 8px; padding: 12px 0; border-top: 1px solid var(--border); }
-.pch-gt-placeval { flex: 1 1 auto; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pch-gt-place { display: flex; align-items: center; gap: 8px; padding: 12px 0 10px; border-top: 1px solid var(--border); }
+.pch-gt-placeval { flex: 1 1 auto; display: flex; align-items: center; }
 .pch-gt-placename { min-width: 0; }
-.pch-gt-mode { flex-shrink: 0; font-style: normal; font-size: 10.5px; font-weight: 700; letter-spacing: .03em; padding: 2px 9px; border-radius: 99px; background: var(--cream-dark); color: var(--ink-soft); }
-.pch-gt .pch-cal-calc-note { padding: 10px 0 2px; border-top: 1px dashed var(--border); }
+.pch-gt-change { flex-shrink: 0; margin-left: auto; font: inherit; font-size: 12.5px; font-weight: 700; line-height: 1; color: var(--saffron); background: var(--saffron-pale); border: 1px solid var(--saffron); border-radius: 999px; padding: 7px 16px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.pch-gt-change:active { transform: scale(.96); }
+.pch-gt-foot { padding: 6px 4px 0; }
 .pch-gt-time { white-space: nowrap; text-align: right; }
 
 /* ── Change Location & Time: popup (same look as the profile popup) ── */
