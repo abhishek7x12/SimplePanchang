@@ -3386,7 +3386,18 @@
     const jd = pchCalSunriseJD(y, m, d);
     const lon = sunMoonLongitudes(jd);
     const t = getTithi(lon.sun, lon.moon);
-    return (pchCal.cache[key] = { name: t.name, idx: t.index, krishna: t.index >= 15, nak: getNakshatra(lon.moon, jd) });
+    // Special rule (Purnima / Amavasya only): if the tithi at this day's sunrise is the one BEFORE
+    // Purnima (13) / Amavasya (28) and at the next sunrise it is already the one AFTER (15 / 0), then
+    // Purnima / Amavasya started after this sunrise and ended before the next one, so it never shows
+    // as a tithi name on any date. Mark this day (the day it started) so the moon icon is drawn here.
+    let skipped = '';
+    if (t.index === 13 || t.index === 28) {
+      const lon2 = sunMoonLongitudes(pchCalSunriseJD(y, m, d + 1));
+      const nextIdx = getTithi(lon2.sun, lon2.moon).index;
+      if (t.index === 13 && nextIdx === 15) skipped = 'purnima';
+      else if (t.index === 28 && nextIdx === 0) skipped = 'amavasya';
+    }
+    return (pchCal.cache[key] = { name: t.name, idx: t.index, krishna: t.index >= 15, nak: getNakshatra(lon.moon, jd), skipped: skipped });
   }
   // Purnimant masa for every day of a month, looked up per day with the app's
   // own getPurnimantMasa (so it matches the Vrat list / header in every year,
@@ -3540,7 +3551,7 @@
       const pakshaFull = masaOf[d - 1] + ' ' + (info.krishna ? 'कृष्ण' : 'शुक्ल') + ' पक्ष';
       html += '<button type="button" class="' + cls + '" onclick="pchCalSelect(' + y + ',' + m + ',' + d + ')" aria-label="' + d + ' ' + MONTH_NAMES_HI[m] + ' ' + pakshaFull + ' ' + info.name + '"'
             + (isSel ? ' aria-pressed="true"' : '') + '>'
-            + '<span class="pch-cal-num">' + d + '</span><span class="pch-cal-tithi' + (info.idx === 14 ? ' is-purnima' : (info.idx === 29 ? ' is-amavasya' : '')) + '">' + info.name + '</span><span class="pch-cal-paksha" data-p="' + pk.join('|') + '">' + paksha + '</span>'
+            + '<span class="pch-cal-num">' + d + ((info.idx === 14 || info.skipped === 'purnima') ? '<i class="pch-cal-moon is-purnima" aria-hidden="true"></i>' : ((info.idx === 29 || info.skipped === 'amavasya') ? '<i class="pch-cal-moon is-amavasya" aria-hidden="true"></i>' : '')) + '</span><span class="pch-cal-tithi' + (info.idx === 14 ? ' is-purnima' : (info.idx === 29 ? ' is-amavasya' : '')) + '">' + info.name + '</span><span class="pch-cal-paksha" data-p="' + pk.join('|') + '">' + paksha + '</span>'
             + '<span class="pch-cal-nak">' + info.nak + '</span><span class="pch-cal-fest">' + pchCalFestText(md && md.days[d]) + '</span></button>';
     }
     grid.innerHTML = html;
@@ -3706,6 +3717,90 @@
     pchCalUpdateInfo();
   };
 
+  /* ── Change toast ──
+     A short notice when the clock moves a Panchang element on to its next value while the page is
+     live (tithi, nakshatra, yoga, karana, rashi, choghadiya, and kaal / muhurat windows starting or
+     ending). Shown only when two consecutive LIVE calculations (same place, ≤ 5 min apart) differ,
+     so it never fires on first load, a place / date / time change made by the user, or after the
+     tab was hidden for a long time. Several changes in the same minute share one toast. */
+  let pchToastPrev = null, pchToastTimer = null;
+  const PCH_TOAST_MAX = 5, PCH_TOAST_MS = 7000;
+  const PCH_TONE_LABEL = { good: 'शुभ', bad: 'अशुभ', neutral: 'सामान्य' };
+
+  function pchToastTak(jd, s) {
+    const end = toDate(jd);
+    const e = new Date(end.getTime() + s.tz * 60000), n = new Date(s.now.getTime() + s.tz * 60000);
+    const same = e.getUTCFullYear() === n.getUTCFullYear() && e.getUTCMonth() === n.getUTCMonth() && e.getUTCDate() === n.getUTCDate();
+    return (same ? '' : e.getUTCDate() + ' ' + MONTH_NAMES_HI[e.getUTCMonth()] + ', ') + fmtTime(end, s.tz) + ' तक';
+  }
+  function pchToastHide() {
+    clearTimeout(pchToastTimer);
+    const el = document.getElementById('pch-toast');
+    if (el) el.classList.remove('on');
+  }
+  function pchToastShow(s, lines) {
+    let el = document.getElementById('pch-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'pch-toast';
+      el.lang = 'hi';
+      el.setAttribute('role', 'status');
+      el.setAttribute('aria-live', 'polite');
+      el.addEventListener('click', pchToastHide);
+      document.body.appendChild(el);
+    }
+    const shown = lines.slice(0, PCH_TOAST_MAX);
+    el.innerHTML = '<div class="pcht-head"><span>🔔 पंचांग अपडेट</span><span class="pcht-time">' + fmtTime(s.now, s.tz) + '</span></div>'
+      + shown.map(function (l) { return '<div class="pcht-line ' + l.tone + '">' + l.text + '</div>'; }).join('')
+      + (lines.length > PCH_TOAST_MAX ? '<div class="pcht-more">+' + (lines.length - PCH_TOAST_MAX) + ' और बदलाव</div>' : '');
+    el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+    clearTimeout(pchToastTimer);
+    pchToastTimer = setTimeout(pchToastHide, PCH_TOAST_MS);
+  }
+  function pchToastCheck(s) {
+    const prev = pchToastPrev;
+    pchToastPrev = s;
+    if (!prev || !s.live || !prev.live || prev.ctx !== s.ctx) return;
+    const dt = s.now.getTime() - prev.now.getTime();
+    if (dt <= 0 || dt > 5 * 60000) return;
+    if (document.hidden || window.spTourActive) return;
+
+    const tz = s.tz, lines = [];
+    const tak = function (x) { return x.end ? ' · ' + pchToastTak(x.end, s) : ''; };
+    if (s.tithi.id !== prev.tithi.id)
+      lines.push({ tone: 'neutral', text: '🌙 तिथि बदली: अब <b>' + s.tithi.name + '</b> (' + s.tithi.paksha + ')' + tak(s.tithi) });
+    if (s.nak.id !== prev.nak.id)
+      lines.push({ tone: 'neutral', text: '⭐ नक्षत्र बदला: अब <b>' + s.nak.name + '</b>' + tak(s.nak) });
+    if (s.yoga.id !== prev.yoga.id)
+      lines.push({ tone: 'neutral', text: '🔆 योग बदला: अब <b>' + s.yoga.name + '</b>' + tak(s.yoga) });
+    if (s.karana.id !== prev.karana.id)
+      lines.push({ tone: s.karana.name.indexOf('भद्रा') !== -1 ? 'bad' : 'neutral', text: '⏳ करण बदला: अब <b>' + s.karana.name + '</b>' + tak(s.karana) });
+    if (s.chandra.id !== prev.chandra.id)
+      lines.push({ tone: 'neutral', text: '🌛 चंद्र राशि बदली: अब <b>' + s.chandra.name + '</b>' + tak(s.chandra) });
+    if (s.surya.id !== prev.surya.id)
+      lines.push({ tone: 'neutral', text: '☀️ सूर्य राशि बदली (संक्रांति): अब <b>' + s.surya.name + '</b>' + tak(s.surya) });
+
+    const cs = s.chogh, cp = prev.chogh;
+    if (cs && (!cp || cs.start.getTime() !== cp.start.getTime())) {
+      const t = CHOGH_TYPE[cs.name] || 'neutral';
+      lines.push({ tone: t, text: '⏱️ चौघड़िया बदला: अब <b>' + cs.name + '</b> (' + PCH_TONE_LABEL[t] + ') · ' + fmtTime(cs.start, tz) + ' – ' + fmtTime(cs.end, tz) });
+    }
+
+    const had = function (list, label) { return list.some(function (k) { return k.label === label; }); };
+    s.kaal.forEach(function (k) {
+      if (had(prev.kaal, k.label)) return;
+      const good = k.cls === 'pch-good';
+      lines.push({ tone: good ? 'good' : 'bad', text: (good ? '✨ ' : '⚠️ ') + '<b>' + k.label + '</b> शुरू · ' + fmtTime(k.start, tz) + ' – ' + fmtTime(k.end, tz) + ' (' + (good ? 'शुभ' : 'अशुभ') + ')' });
+    });
+    prev.kaal.forEach(function (k) {
+      if (had(s.kaal, k.label)) return;
+      const good = k.cls === 'pch-good';
+      lines.push({ tone: good ? 'neutral' : 'good', text: (good ? '⏹️ ' : '✅ ') + '<b>' + k.label + '</b> समाप्त' });
+    });
+
+    if (lines.length) pchToastShow(s, lines);
+  }
+
   let pchCalcGeneration = 0;
 
   window.pchRunCalculation = async function pchRunCalculation() {
@@ -3830,6 +3925,9 @@
         }
       }
 
+      const ends = {};      // end instants (JD) of the running elements, reused by the change toast
+      let kaalNow = [];     // kaal / muhurat windows running right now, reused by the change toast
+
       pchSafeSection('tatva-samvat-ritu-masa', null, function () {
         let samvatYear;
         try { samvatYear = vikramSamvatAt(jdNow); } catch (e) { samvatYear = vikramSamvat(today); }   // never let this block the rest of the section
@@ -3853,6 +3951,7 @@
         const nakshatraEndJD = findNextTransition(jdNow, nakshatraIndexAt);
         const yogaEndJD = findNextTransition(jdNow, yogaIndexAt);
         const karanaEndJD = findNextTransition(jdNow, karanaIndexAt);
+        ends.tithi = tithiEndJD; ends.nak = nakshatraEndJD; ends.yoga = yogaEndJD; ends.karana = karanaEndJD;
         document.getElementById('pch-tithi').innerHTML = tithi.name + fmtTak(tithiEndJD, true);
         document.getElementById('pch-nakshatra').innerHTML = nakshatra + fmtTak(nakshatraEndJD, true);
         document.getElementById('pch-yoga').innerHTML = yoga + fmtTak(yogaEndJD, true);
@@ -3862,6 +3961,7 @@
       pchSafeSection('rashi-balam', null, function () {
         const chandraRashiEndJD = findNextTransitionSlow(jdNow, chandraRashiIndexAt, 5);
         const suryaRashiEndJD = findNextTransitionSlow(jdNow, suryaRashiIndexAt, 35);
+        ends.chandra = chandraRashiEndJD; ends.surya = suryaRashiEndJD;
         document.getElementById('pch-chandra-rashi').innerHTML = getChandraRashi(moon, jdNow) + fmtTak(chandraRashiEndJD, true);
         document.getElementById('pch-surya-rashi').innerHTML = getSuryaRashi(sun, jdNow) + fmtTak(suryaRashiEndJD, true);
         pchRenderBalam(chandraRashiIndexAt(jdNow), nakshatraIndexAt(jdNow));
@@ -3899,6 +3999,8 @@
           if (!b.start) return -1;
           return a.start - b.start;
         });
+        kaalNow = muhurtList.filter(m => m.start && today >= m.start && today < m.end)
+          .map(m => ({ label: m.label, cls: m.cls, start: m.start, end: m.end }));
         document.getElementById('pch-muhurt-grid').innerHTML = muhurtList.map(m =>
           '<div class="pch-item ' + m.cls + '"><div class="pch-label">' + m.label + '</div><div class="pch-value">' +
           (m.start ? (fmtTime(m.start, tz) + ' – ' + fmtTime(m.end, tz) + ((today >= m.start && today < m.end) ? '<span class="pch-muhurt-nowtag">अभी</span>' : '')) : 'आज नहीं') +
@@ -3929,6 +4031,27 @@
             pchVratRenderedKey = vratKey;   // only after a successful render, so a failure retries next tick
           });
         }
+      }
+
+      if (myGen === pchCalcGeneration) {
+        // time-driven change toast (tithi, nakshatra, yoga, karana, rashi, choghadiya, kaal / muhurat)
+        try {
+          const allCh = pchLastChogh ? pchChoghAll() : [];
+          const ci = allCh.length ? pchChoghNowIndex(allCh) : -1;
+          pchToastCheck({
+            ctx: PCH.lat + '|' + PCH.lon + '|' + tz,
+            live: !PCH.customDateTime || !!pchCal.followNow,
+            now: today, tz: tz,
+            tithi: { id: tithi.index, name: tithi.name, paksha: tithi.paksha, end: ends.tithi },
+            nak: { id: nakshatraIndexAt(jdNow), name: nakshatra, end: ends.nak },
+            yoga: { id: yogaIndexAt(jdNow), name: yoga, end: ends.yoga },
+            karana: { id: karanaIndexAt(jdNow), name: karana, end: ends.karana },
+            chandra: { id: chandraRashiIndexAt(jdNow), name: getChandraRashi(moon, jdNow), end: ends.chandra },
+            surya: { id: suryaRashiIndexAt(jdNow), name: getSuryaRashi(sun, jdNow), end: ends.surya },
+            chogh: ci >= 0 ? allCh[ci] : null,
+            kaal: kaalNow
+          });
+        } catch (toastErr) { console.warn('Change toast failed:', toastErr); }
       }
 
       if (myGen === pchCalcGeneration) {
