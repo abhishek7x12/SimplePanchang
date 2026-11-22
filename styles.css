@@ -1376,3 +1376,21 @@ body.dark-mode .profile-modal-card,
 #pch-location-section.is-popup .lm-search { background: var(--cream); }
 @keyframes glassFade { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .profile-modal, #pch-location-section.is-popup { animation: none; } }
+
+
+/* Calendar: Purnima / Amavasya moon icon to the right of the date number (number stays centred) */
+.pch-cal-num { position: relative; display: inline-block; }
+.pch-cal-moon {
+  position: absolute; left: 100%; top: 50%; margin: -5.5px 0 0 3px;
+  width: 11px; height: 11px; border-radius: 50%; display: block; pointer-events: none;
+}
+.pch-cal-moon.is-purnima {
+  background: radial-gradient(circle at 36% 32%, #FFF1B8 0%, #FFD24A 38%, #E9A21B 78%, #C98410 100%);
+  box-shadow: 0 0 4px 1px rgba(255,200,40,.75), inset 0 0 0 .5px rgba(160,100,0,.45);
+}
+.pch-cal-moon.is-amavasya {
+  background: radial-gradient(circle at 36% 32%, #8D8BB8 0%, #4B4A78 42%, #26254A 80%, #15142E 100%);
+  box-shadow: 0 0 3px 1px rgba(50,48,110,.55), inset 0 0 0 .5px rgba(255,255,255,.18);
+}
+.pch-cal-cell.is-sel .pch-cal-moon { box-shadow: 0 0 0 1.5px #fff, 0 0 4px 1px rgba(0,0,0,.25); }
+body.dark-mode .pch-cal-moon.is-amavasya { background: radial-gradient(circle at 36% 32%, #B3B1E0 0%, #6A68A8 45%, #3A3877 85%); }
