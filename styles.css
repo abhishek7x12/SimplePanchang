@@ -1083,23 +1083,42 @@ body.dark-mode .pch-mdate-label { color: #6FD09A; }
 .pch-mdate-navbtn { width: 32px; height: 32px; font-size: 20px; flex-shrink: 0; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 .pch-mdate-month { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; width: 118px; padding: 6px 8px; border-radius: 999px; background: var(--saffron); color: #fff; font-size: 12px; font-weight: 700; line-height: 1.2; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
 
-/* ── Geo & Timestamp card ── */
-.pch-gt { padding: 4px 20px; scroll-margin-top: 12px; }
-.pch-gt-stamp { display: flex; align-items: center; padding: 10px 0 12px; }
-.pch-gt-field { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.pch-gt-field--date { flex: 1 1 auto; padding-right: 12px; }
-.pch-gt-field--time { flex: 0 0 auto; margin-left: auto; padding-left: 12px; border-left: 1px solid var(--border); }
+/* ── Geo & Timestamp card: [location] | [time] | [Change] ──
+   One flex row: location | sep | time | sep | Change. `space-between` hands any spare width out to the
+   four gaps equally, so the space around BOTH separators is always identical; `gap` is the minimum
+   they never drop below. A short place leaves the gaps wide, a long place eats them down to the
+   minimum and then wraps (max 2 lines) instead of clipping. The time simply moves with it. */
+.pch-gt { padding: 0 16px; scroll-margin-top: 12px; }
+.pch-gt-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0; }
+.pch-gt-sec { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pch-gt-sec--loc { flex: 0 1 auto; }
+.pch-gt-sec--time, .pch-gt-sec--change { flex: 0 0 auto; }
+.pch-gt-sep { flex: 0 0 1px; align-self: center; width: 1px; height: 24px; background: var(--border); }
 .pch-gt-ico { flex-shrink: 0; font-size: 17px; line-height: 1; }
-.pch-gt-val { min-width: 0; font-size: 15px; font-weight: 700; line-height: 1.3; color: var(--ink); }
-.pch-gt-note { margin: -2px 0 10px; font-size: 11.5px; line-height: 1.4; color: var(--ink-soft); }
+.pch-gt-val { min-width: 0; font-size: 14px; font-weight: 700; line-height: 1.3; color: var(--ink); }
+.pch-gt-placeval { text-align: left; }
+.pch-gt-placeval { overflow: hidden; white-space: nowrap; }
+.pch-gt-placename { display: inline-block; white-space: nowrap; }
+.pch-gt-placeval.is-sliding .pch-gt-placename { animation: pchGtSlide var(--pch-slide-dur, 6s) ease-in-out infinite alternate; will-change: transform; }
+@keyframes pchGtSlide { 0%, 18% { transform: translateX(0); } 82%, 100% { transform: translateX(var(--pch-slide, 0)); } }
+@media (prefers-reduced-motion: reduce) { .pch-gt-placeval.is-sliding { text-overflow: ellipsis; } .pch-gt-placeval.is-sliding .pch-gt-placename { display: inline; } }
+.pch-gt-time { white-space: nowrap; }
+.pch-gt-note { padding: 0 0 10px; font-size: 11.5px; line-height: 1.4; color: var(--ink-soft); text-align: center; }
 .pch-gt-note:empty { display: none; }
-.pch-gt-place { display: flex; align-items: center; gap: 8px; padding: 12px 0 10px; border-top: 1px solid var(--border); }
-.pch-gt-placeval { flex: 1 1 auto; display: flex; align-items: center; }
-.pch-gt-placename { min-width: 0; }
-.pch-gt-change { flex-shrink: 0; margin-left: auto; font: inherit; font-size: 12.5px; font-weight: 700; line-height: 1; color: var(--saffron); background: var(--saffron-pale); border: 1px solid var(--saffron); border-radius: 999px; padding: 7px 16px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.pch-gt-change { flex-shrink: 0; font: inherit; font-size: 12.5px; font-weight: 700; line-height: 1; color: var(--saffron); background: var(--saffron-pale); border: 1px solid var(--saffron); border-radius: 999px; padding: 7px 16px; cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
 .pch-gt-change:active { transform: scale(.96); }
-.pch-gt-foot { padding: 6px 4px 0; }
-.pch-gt-time { white-space: nowrap; text-align: right; }
+@media (max-width: 400px) {
+  .pch-gt { padding: 0 10px; }
+  .pch-gt-row { gap: 9px; }
+  .pch-gt-sec { gap: 5px; }
+  .pch-gt-ico { font-size: 15px; }
+  .pch-gt-val { font-size: 13px; }
+  .pch-gt-change { font-size: 12px; padding: 6px 12px; }
+}
+@media (max-width: 340px) {
+  .pch-gt-row { gap: 7px; }
+  .pch-gt-sec--loc .pch-gt-ico, .pch-gt-sec--time .pch-gt-ico { display: none; }
+}
 
 /* ── Change Location & Time: popup (same look as the profile popup) ── */
 .pch-loc-close { display: none; }
@@ -1394,3 +1413,31 @@ body.dark-mode .profile-modal-card,
 }
 .pch-cal-cell.is-sel .pch-cal-moon { box-shadow: 0 0 0 1.5px #fff, 0 0 4px 1px rgba(0,0,0,.25); }
 body.dark-mode .pch-cal-moon.is-amavasya { background: radial-gradient(circle at 36% 32%, #B3B1E0 0%, #6A68A8 45%, #3A3877 85%); }
+
+/* ── Change toast (panchang.js → pchToastShow): "🔔 पंचांग अपडेट" when tithi / nakshatra / yoga / karana /
+   rashi / choghadiya / kaal change while the page is live. Hidden until .on; tap to dismiss. ── */
+#pch-toast {
+  position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 10040;
+  box-sizing: border-box; width: min(calc(100vw - 24px), 456px); padding: 12px 14px 10px;
+  background: linear-gradient(160deg, var(--hero-a), var(--hero-b)); color: #fff;
+  border: 1px solid rgba(199,154,69,.55); border-radius: 18px;
+  box-shadow: 0 18px 40px -12px rgba(0,0,0,.55);
+  opacity: 0; visibility: hidden; pointer-events: none; cursor: pointer;
+  transform: translate(-50%, 24px);
+  transition: opacity .25s ease, transform .3s cubic-bezier(.2,.9,.3,1.1), visibility 0s linear .3s;
+}
+#pch-toast.on { opacity: 1; visibility: visible; pointer-events: auto; transform: translate(-50%, 0); transition: opacity .25s ease, transform .3s cubic-bezier(.2,.9,.3,1.1); }
+.pcht-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; font-size: 12.5px; font-weight: 700; color: #F0D9A4; }
+.pcht-time { font-weight: 600; color: rgba(255,255,255,.75); white-space: nowrap; }
+.pcht-line { padding: 6px 0; font-size: 13.5px; line-height: 1.45; color: rgba(255,255,255,.95); border-top: 1px solid rgba(255,255,255,.12); }
+.pcht-line b { font-weight: 700; color: #fff; }
+.pcht-line.good b { color: #7FE0A8; }
+.pcht-line.bad b { color: #FFA29B; }
+.pcht-more { padding-top: 6px; font-size: 12px; color: rgba(255,255,255,.7); border-top: 1px solid rgba(255,255,255,.12); }
+@media (prefers-reduced-motion: reduce) { #pch-toast, #pch-toast.on { transition: none; } }
+
+/* New-Year events: click to show details */
+.vrat-has-meta { cursor: pointer; }
+.vrat-meta { display: none; margin-top: 6px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--saffron-pale); font-size: 12px; line-height: 1.5; color: var(--ink); }
+.vrat-has-meta.open .vrat-meta { display: block; }
+.vrat-meta-note { margin-top: 4px; font-weight: 600; color: var(--ink-soft); }
