@@ -1,8 +1,8 @@
 /* ============================================================================
    PRODUCT TOUR — spotlight walkthrough for first-time users, in the same top-to-bottom
    order as the page: welcome → calendar (month bar, then a date box) → Geo Timestamp
-   (place/date/time + Change) → tap-for-timeline (pointer only; the detail page is not opened)
-   → sections below (choghadiya, kaal, vrat-tyohar & holidays) → header tools (settings, profile).
+   (place/date/time + Change) → tap-for-timeline (pointer) → the timeline page itself (opened for
+   तिथि) → header tools (settings, profile).
    Replay any time from ⚙️ → App Tour (spStartTour()).
    State lives in localStorage under pch_tour_state (cleared by "Delete my data").
 
@@ -97,29 +97,21 @@
 
     geo: { page: 'main', target: function () { var e = q('#pch-cal-loc'); return e && e.closest('.about-card'); },
       title: 'किस स्थान, दिन और समय का पंचांग',
-      body: 'नीचे का पूरा पंचांग यहाँ लिखे दिनांक, समय और स्थान के अनुसार निकला है। किसी दूसरे शहर, तारीख़ या समय का पंचांग देखना हो तो “Change” बटन दबाएँ।' },
+      body: 'नीचे का पूरा पंचांग यहाँ लिखे स्थान और समय (तथा कैलेंडर में चुनी तारीख़) के अनुसार निकला है। किसी दूसरे शहर, तारीख़ या समय का पंचांग देखना हो तो “Change” बटन दबाएँ।' },
 
     tap: { page: 'main', hand: true, target: function () { return q('.pch-item[data-eld="tithi"]'); },
       title: 'किसी भी बॉक्स को छुएँ',
       body: 'तिथि, नक्षत्र, योग, करण, राशि, मास, पक्ष, ऋतु, अयन और विक्रम संवत — किसी को भी छूने पर उसकी पूरी समय-रेखा खुलती है: पिछला क्या था, अभी क्या है और आगे क्या आएगा।' },
 
-    chogh: { page: 'main', target: function () { return sectionOf('#pch-choghadiya-list'); },
-      title: 'चौघड़िया',
-      body: 'दिन और रात के शुभ-अशुभ समय एक नज़र में। “सम्पूर्ण चौघड़िया देखें” बटन से दिन और रात की पूरी सूची खुलती है।' },
+    detail: { page: 'detail', last: true, target: function () { return q('#eld-timeline .eld-seg--current'); },
+      title: 'तिथि की समय-रेखा',
+      body: 'किसी भी पंचांग बॉक्स को छूने पर ऐसा पेज खुलता है। बीच के कार्ड में अभी चल रही तिथि है, जिसकी प्रगति-पट्टी बताती है कि कितना समय बीत चुका और कितना शेष है। ऊपर पिछली और नीचे आगामी तिथि के बदलने का सटीक समय दिखता है। वापस जाने के लिए ऊपर बाईं ओर का तीर दबाएँ।' },
 
-    kaal: { page: 'main', target: function () { return sectionOf('#pch-muhurt-grid'); },
-      title: 'काल',
-      body: 'राहुकाल, अभिजित मुहूर्त जैसे ज़रूरी समय यहाँ मिलते हैं। नीचे उस महीने के शुभ कार्यों के मुहूर्त की तारीख़ें भी दी गई हैं।' },
-
-    vrat: { page: 'main', target: function () { return sectionOf('#pch-vrat-list'); },
-      title: 'व्रत-त्योहार और अवकाश',
-      body: 'आने वाले व्रत और त्योहार यहाँ दिखते हैं, उसके ठीक नीचे सार्वजनिक अवकाश। “सम्पूर्ण … देखें” बटन से पूरे महीने की सूची खुलती है।' },
-
-    header: { page: 'main', last: true, target: function () { return q('.header-actions'); },
+    header: { page: 'main', target: function () { return q('.header-actions'); },
       title: 'सेटिंग्स और प्रोफ़ाइल',
       body: '⚙️ से डार्क मोड, संपर्क और यह टूर दोबारा देखें। 👤 प्रोफ़ाइल में अपना जन्म विवरण भरें — तभी आपका चंद्रबल और ताराबल दिखेगा।' }
   };
-  var FLOW = ['welcome', 'cal', 'caldate', 'geo', 'tap', 'chogh', 'kaal', 'vrat', 'header'];
+  var FLOW = ['welcome', 'header', 'cal', 'caldate', 'geo', 'tap', 'detail'];
 
   /* ── DOM ── */
   var root, spot, tip, hand, refs = {};
