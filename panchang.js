@@ -725,22 +725,21 @@
   }
   // ── Muhurt: auspicious dates of the month for particular works ──
   // Keyed by 'YYYY-MM'. To add a month, add another key. A work with no date that month can be left out, or given days: [] and a note.
+  const PCH_MUHURT_LABELS = ['शुभ विवाह मुहूर्तः', 'नींव (गृहारंभ) मुहूर्तः', 'जीर्णोद्धार गृह प्रवेश मुहूर्तः', 'देव प्रतिष्ठा मुहूर्तः', 'व्यापार प्रारंभ मुहूर्तः'];
   const PCH_MUHURT_DATES = {
     '2026-11': [
       { label: 'शुभ विवाह मुहूर्तः',          days: [21, 22, 24, 25, 26, 30] },
       { label: 'नींव (गृहारंभ) मुहूर्तः',  days: [1, 2, 4, 11, 12, 14, 20, 21, 25, 26, 28, 29, 30] },
       { label: 'जीर्णोद्धार गृह प्रवेश मुहूर्तः',     days: [4, 6, 7, 11, 12, 14, 20, 21, 25, 26, 28] },
       { label: 'देव प्रतिष्ठा मुहूर्तः',        days: [1, 11, 14, 15, 20, 25, 26, 28, 29] },
-      { label: 'व्यापार प्रारंभ मुहूर्तः',      days: [1, 4, 6, 7, 11, 15, 20, 21, 25, 26, 28, 29] },
-      { label: 'प्रसूति स्नान मुहूर्तः',        days: [12, 19, 26] }
+      { label: 'व्यापार प्रारंभ मुहूर्तः',      days: [1, 4, 6, 7, 11, 15, 20, 21, 25, 26, 28, 29] }
     ],
     '2026-12': [
       { label: 'शुभ विवाह मुहूर्तः',          days: [2, 3, 4, 5, 11, 12] },
       { label: 'नींव (गृहारंभ) मुहूर्तः',  days: [2, 3, 4, 5, 10, 11, 14] },
       { label: 'जीर्णोद्धार गृह प्रवेश मुहूर्तः',     days: [2, 3, 4, 5, 10, 11, 12, 14] },
       { label: 'देव प्रतिष्ठा मुहूर्तः',        days: [2, 3, 11, 12, 13, 14] },
-      { label: 'व्यापार प्रारंभ मुहूर्तः',      days: [2, 3, 4, 5, 11, 12] },
-      { label: 'प्रसूति स्नान मुहूर्तः',        days: [3, 6, 20, 22] }
+      { label: 'व्यापार प्रारंभ मुहूर्तः',      days: [2, 3, 4, 5, 11, 12] }
     ],
     '2027-01': [
       { label: 'शुभ विवाह मुहूर्तः', days: [15, 20, 24, 30, 31] },
@@ -832,17 +831,24 @@
     const ym = pchMuhurtViewYm;
     const rows = PCH_MUHURT_DATES[ym];
     const day = (pchMuhurtSelYmd.slice(0, 7) === ym) ? parseInt(pchMuhurtSelYmd.slice(8, 10), 10) : 0;
+    // dates before the selected date are already gone: shown in regular weight (see .pch-mdate-day.is-past)
+    const selYm = pchMuhurtSelYmd.slice(0, 7);
+    const isPast = function (d) { return ym < selYm || (ym === selYm && d < day); };
     const mi = parseInt(ym.slice(5, 7), 10) - 1;
     document.getElementById('pch-muhurt-dates-month').textContent = PCH_MUHURT_MONTHS_HI[mi] + ' ' + ym.slice(0, 4);
     const prevB = document.getElementById('pch-muhurt-prev'), nextB = document.getElementById('pch-muhurt-next');
     if (prevB) prevB.disabled = !PCH_MUHURT_DATES[pchMuhurtShiftYm(ym, -1)];
     if (nextB) nextB.disabled = !PCH_MUHURT_DATES[pchMuhurtShiftYm(ym, 1)];
-    listEl.innerHTML = rows.map(function (r) {
+    // Every work is always listed: one with no date this month (row left out, or days: []) reads "इस माह मुहूर्त नहीं" in regular weight.
+    const byLabel = {};
+    rows.forEach(function (r) { byLabel[r.label] = r; });
+    const allRows = PCH_MUHURT_LABELS.map(function (l) { return byLabel[l] || { label: l, days: [] }; });
+    listEl.innerHTML = allRows.map(function (r) {
       return '<div class="pch-mdate-row"><span class="pch-mdate-label">' + r.label + '</span> ' +
         '<span class="pch-mdate-days">' +
         (r.days.length
-          ? r.days.map(function (d) { return '<span class="pch-mdate-day' + (d === day ? ' is-today' : '') + '">' + d + '</span>'; }).join(', ')
-          : (r.note || '')) +
+          ? r.days.map(function (d) { return '<span class="pch-mdate-day' + (d === day ? ' is-today' : (isPast(d) ? ' is-past' : '')) + '">' + d + '</span>'; }).join(', ')
+          : '<span class="pch-mdate-none">इस माह मुहूर्त नहीं</span>') +
         '</span></div>';
     }).join('');
   }
@@ -3626,7 +3632,13 @@
       const pakshaFull = masaOf[d - 1] + ' ' + (info.krishna ? 'कृष्ण' : 'शुक्ल') + ' पक्ष';
       html += '<button type="button" class="' + cls + '" onclick="pchCalSelect(' + y + ',' + m + ',' + d + ')" aria-label="' + d + ' ' + MONTH_NAMES_HI[m] + ' ' + pakshaFull + ' ' + info.name + '"'
             + (isSel ? ' aria-pressed="true"' : '') + '>'
-            + '<span class="pch-cal-num">' + d + ((info.idx === 14 || info.skipped === 'purnima') ? '<i class="pch-cal-moon is-purnima" aria-hidden="true"></i>' : ((info.idx === 29 || info.skipped === 'amavasya') ? '<i class="pch-cal-moon is-amavasya" aria-hidden="true"></i>' : '')) + '</span><span class="pch-cal-tithi' + (info.idx === 14 ? ' is-purnima' : (info.idx === 29 ? ' is-amavasya' : '')) + '">' + info.name + '</span><span class="pch-cal-paksha" data-p="' + pk.join('|') + '">' + paksha + '</span>'
+            // Purnima / Amavasya: the moon gets its own grid column beside the date number (see .pch-cal-num.has-moon in styles.css)
+            + (function () {
+                const mk = (info.idx === 14 || info.skipped === 'purnima') ? 'is-purnima' : ((info.idx === 29 || info.skipped === 'amavasya') ? 'is-amavasya' : '');
+                return mk ? '<span class="pch-cal-num has-moon"><span class="pch-cal-d">' + d + '</span><i class="pch-cal-moon ' + mk + '" aria-hidden="true"></i></span>'
+                          : '<span class="pch-cal-num">' + d + '</span>';
+              })()
+            + '<span class="pch-cal-tithi' + (info.idx === 14 ? ' is-purnima' : (info.idx === 29 ? ' is-amavasya' : '')) + '">' + info.name + '</span><span class="pch-cal-paksha" data-p="' + pk.join('|') + '">' + paksha + '</span>'
             + '<span class="pch-cal-nak">' + info.nak + '</span><span class="pch-cal-fest">' + pchCalFestText(md && md.days[d]) + '</span></button>';
     }
     grid.innerHTML = html;
@@ -3870,7 +3882,7 @@
     if (!prev || !s.live || !prev.live || prev.ctx !== s.ctx) return;
     const dt = s.now.getTime() - prev.now.getTime();
     if (dt <= 0 || dt > 5 * 60000) return;
-    if (document.hidden || window.spTourActive) return;
+    if (document.hidden) return;
 
     const tz = s.tz, lines = [];
     const tak = function (x) { return x.end ? ' · ' + pchToastTak(x.end, s) : ''; };
@@ -4072,6 +4084,34 @@
         document.getElementById('pch-chandra-rashi').innerHTML = getChandraRashi(moon, jdNow) + fmtTak(chandraRashiEndJD, true);
         document.getElementById('pch-surya-rashi').innerHTML = getSuryaRashi(sun, jdNow) + fmtTak(suryaRashiEndJD, true);
         pchRenderBalam(chandraRashiIndexAt(jdNow), nakshatraIndexAt(jdNow));
+
+        // Panchak: Moon transiting Kumbha (10) or Meena (11) rashi
+        // (Dhanishtha 2nd half -> Revati). Shown right after Disha Shool.
+        (function () {
+          const isPanchakIdx = function (jd) { const r = chandraRashiIndexAt(jd); return (r === 10 || r === 11) ? 1 : 0; };
+          const panchakEl = document.getElementById('pch-panchak');
+          const panchakItem = document.getElementById('pch-panchak-item');
+          if (!panchakEl) return;
+          const active = isPanchakIdx(jdNow) === 1;
+          panchakEl.textContent = active ? 'आज पंचक है' : 'आज कोई पंचक नहीं है';
+          if (panchakItem) {
+            panchakItem.classList.toggle('pch-bad', active);
+            panchakItem.classList.toggle('pch-good', !active);
+          }
+        })();
+
+        // Vinchudo: Moon transiting Vrishchika (Scorpio) rashi (index 7).
+        (function () {
+          const el = document.getElementById('pch-vinchudo');
+          const item = document.getElementById('pch-vinchudo-item');
+          if (!el) return;
+          const active = chandraRashiIndexAt(jdNow) === 7;
+          el.textContent = active ? 'आज विंचुडो है' : 'आज कोई विंचुडो नहीं है';
+          if (item) {
+            item.classList.toggle('pch-bad', active);
+            item.classList.toggle('pch-good', !active);
+          }
+        })();
       });
 
       pchSafeSection('date-sun-moon-summary', null, function () {
@@ -4170,14 +4210,6 @@
         } catch (toastErr) { console.warn('Change toast failed:', toastErr); }
       }
 
-      if (myGen === pchCalcGeneration) {
-        // first successful render: let the product tour decide whether to greet this user
-        try {
-          if (typeof window.spTourMaybeStart === 'function') window.spTourMaybeStart();
-        } catch (tourErr) {
-          console.warn('Product tour could not start:', tourErr);   // never surface as a calculation error
-        }
-      }
     } catch (err) {
       // Anything that throws here happens before the individually-guarded
       // sections above (e.g. the sunrise/sunset fetch or moonrise/moonset
@@ -4293,6 +4325,24 @@
       name: i => 'विक्रम संवत ' + i,
       cap: i => 'संवत ' + i,
       sub: () => 'चैत्र शुक्ल प्रतिपदा से फाल्गुन अमावस्या तक'
+    },
+    panchak: {
+      label: 'पंचक', idxFn: function (jd) { const r = chandraRashiIndexAt(jd); return (r === 10 || r === 11) ? 1 : 0; },
+      step: 0.5, maxDays: 40,
+      desc: 'चंद्रमा के कुंभ और मीन राशि में रहने की अवधि (धनिष्ठा उत्तरार्ध से रेवती तक) पंचक कहलाती है — लगभग 5 दिन',
+      name: i => (i ? 'पंचक काल — अशुभ' : 'पंचक नहीं'),
+      cap: i => (i ? 'पंचक' : 'पंचक-मुक्त काल'),
+      sub: i => (i ? 'चंद्रमा कुंभ / मीन राशि में' : 'चंद्रमा कुंभ-मीन के बाहर'),
+      tone: i => (i ? 'bad' : 'good')
+    },
+    vinchudo: {
+      label: 'विंचुडो', idxFn: function (jd) { return chandraRashiIndexAt(jd) === 7 ? 1 : 0; },
+      step: 0.5, maxDays: 40,
+      desc: 'चंद्रमा के वृश्चिक राशि में रहने की अवधि विंचुडो कहलाती है — लगभग सवा दो दिन',
+      name: i => (i ? 'विंचुडो काल — अशुभ' : 'विंचुडो नहीं'),
+      cap: i => (i ? 'विंचुडो' : 'विंचुडो-मुक्त काल'),
+      sub: i => (i ? 'चंद्रमा वृश्चिक राशि में' : 'चंद्रमा वृश्चिक राशि के बाहर'),
+      tone: i => (i ? 'bad' : 'good')
     },
     chandrabal: {
       label: 'चंद्रबल', needsBirth: true, idxFn: chandraRashiIndexAt, step: 0.5, maxDays: 5,
@@ -4484,7 +4534,7 @@
 
     const noteEl = document.getElementById('eld-note');
     if (noteEl) {
-      noteEl.textContent = 'सभी समय ' + (PCH.name ? PCH.name : 'चयनित स्थान') + ' के स्थानीय समय अनुसार · गणना अनुमानित है';
+      noteEl.textContent = 'Note: ' + spec.label + ' की गणना आपके द्वारा चुने गए स्थान, समय व दिनांक के आधार पर की गई है।';
     }
     eldRefs = {
       clock: document.getElementById('eld-now-clock'),
@@ -4988,6 +5038,8 @@ function showSecondaryPage(pageId) {
 
 /* ── Settings menu, settings pages and dark mode ── */
 var SP_CONTACT_EMAIL = 'trovatoindia@protonmail.com';
+var SP_APP_VERSION = 'v3.4.8';
+var SP_APP_RELEASE_DATE = '27 November 2026';
 var SP_SETTINGS_KEY = 'sp_app_settings';
 
 /* ── Page footers: one definition for the ten .about-footer blocks in index.html ──
@@ -5003,8 +5055,8 @@ function renderFooters() {
     var kind = nodes[i].getAttribute('data-footer');
     var html = SP_FOOTER_DEV;
     if (kind === 'about') {
-      // About Us only: registered / additional office lines, same size & font as the email line
-      html = html.replace('</p>', '<br><span class="dev-email-line">Reg. Office: Beawar 305901 (Raj.)</span><br><span class="dev-email-line">Additional Operations: Jaipur 302004 (Raj.)</span></p>');
+      // About Us only: no repeated developer info; just the app version line after the lotus artwork
+      html = '<p class="dev-info" style="line-height:1.6; text-align:center; margin-bottom:10px;"><span class="dev-email-line">App Version: ' + SP_APP_VERSION + ' | Released On: ' + SP_APP_RELEASE_DATE + '</span></p>';
     }
     if (kind !== 'plain' && kind !== 'about') {
       html += '<p' + (kind === 'disclaimer-pch' ? ' class="pch-disclaimer"' : '') + ' style="font-size:11px; opacity:0.75; line-height:1.5; text-align:justify;">' + SP_FOOTER_DISCLAIMER + '</p>';
