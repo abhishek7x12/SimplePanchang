@@ -96,7 +96,7 @@
     border: 1px solid var(--glass-border);
     box-shadow: var(--shadow);}
   .about-footer {
-    text-align: center; margin-top: 28px;
+    text-align: center; margin-top: 32px;
     font-size: 12px; color: var(--ink-soft); line-height: 1.8;}
   /* Panchang */
   .pch-loc-btns { display: flex; flex-direction: column; gap: 8px; }
@@ -381,7 +381,6 @@ body::after { display: none; }
   letter-spacing: -0.01em; border-left: none; padding-left: 2px; margin-bottom: 10px;
 }
 .about-card { padding: 18px; }
-.about-footer { opacity: 0.8; }
 
 /* Panchang */
 .pch-grid { gap: 20px 16px; }
@@ -632,8 +631,8 @@ body.dark-mode .header-avatar { border-color: rgba(255,255,255,0.7); }
 .header-actions { flex-shrink: 0; }
 
 /* App name alone in the header, larger */
-.header-logo-text .samaj { font-size: 23px; line-height: 1.15; }
-@media (max-width: 360px) { .header-logo-text .samaj { font-size: 21px; } }
+.header-logo-text .samaj { font-size: 22px; line-height: 1.15; }
+@media (max-width: 360px) { .header-logo-text .samaj { font-size: 20px; } }
 
 /* Panchang page has no hero banner: keep a little breathing room below the fixed header */
 #page-panchang > .about-body { padding-top: 0; }
@@ -749,71 +748,6 @@ body.dark-mode #page-element-detail {
   .eld-bar-fill { transition: none; }
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   Product tour (spotlight walkthrough) — see tour.js
-   ══════════════════════════════════════════════════════════════════ */
-.sp-tour { position: fixed; inset: 0; z-index: 10050; }
-.sp-tour[hidden] { display: none; }
-.sp-tour-block { position: absolute; inset: 0; background: transparent; }
-.sp-tour.is-center .sp-tour-block { background: rgba(12,12,32,.74); }
-.sp-tour-spot {
-  position: fixed; pointer-events: none; opacity: 0;
-  box-shadow: 0 0 0 9999px rgba(12,12,32,.74), 0 0 0 2px rgba(255,255,255,.9);
-  transition: top .28s ease, left .28s ease, width .28s ease, height .28s ease, border-radius .28s ease, opacity .2s;
-}
-.sp-tour-spot.pulse::after {
-  content: ''; position: absolute; inset: -5px; border-radius: inherit;
-  border: 2px solid var(--brass); animation: spRing 1.6s ease-out infinite;
-}
-@keyframes spRing { 0% { transform: scale(.97); opacity: 1; } 100% { transform: scale(1.06); opacity: 0; } }
-.sp-tour-hand {
-  position: fixed; z-index: 1; font-size: 30px; line-height: 1; pointer-events: none;
-  transition: opacity .2s; animation: spTap 1.4s ease-in-out infinite;
-  filter: drop-shadow(0 3px 4px rgba(0,0,0,.35));
-}
-@keyframes spTap { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-4px,-8px); } }
-
-.sp-tour-tip {
-  position: fixed; z-index: 2; box-sizing: border-box;
-  width: min(calc(100vw - 24px), 340px); padding: 16px 16px 14px;
-  background: var(--white); color: var(--ink);
-  border: 1px solid var(--border); border-radius: 18px;
-  box-shadow: 0 18px 40px -12px rgba(0,0,0,.55);
-  transition: top .28s ease, left .28s ease, opacity .18s ease;
-}
-.sp-tour-tip.is-changing { opacity: 0; }
-.sp-tour.is-center .sp-tour-tip { text-align: center; }
-.sp-tour-art { margin-bottom: 10px; }
-.sp-art-emoji { font-size: 38px; line-height: 1.1; }
-.sp-tour-badge {
-  display: inline-block; margin-bottom: 8px; padding: 3px 10px; border-radius: 99px;
-  font-size: 11.5px; font-weight: 700; letter-spacing: .02em;
-  background: var(--saffron); color: #fff;
-}
-.sp-tour-title { font-family: var(--serif); font-size: 19px; font-weight: 600; line-height: 1.3; color: var(--ink); }
-.sp-tour-body { margin-top: 6px; font-size: 14px; line-height: 1.65; color: var(--ink-soft); }
-.sp-tour-meter { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 11.5px; font-weight: 600; color: var(--ink-soft); }
-.sp-tour-bar { flex: 1; height: 4px; border-radius: 99px; background: var(--saffron-pale); overflow: hidden; }
-.sp-tour-bar i { display: block; height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, var(--saffron), var(--gold)); transition: width .3s ease; }
-.sp-tour-foot { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
-.sp-tour-spacer { flex: 1; }
-.sp-btn {
-  font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
-  padding: 9px 16px; border-radius: 12px; border: 1px solid transparent;
-  -webkit-tap-highlight-color: transparent;
-}
-.sp-btn-primary { background: var(--saffron); color: #fff; }
-.sp-btn-sec { background: transparent; color: var(--ink); border-color: var(--border); }
-.sp-btn-ghost { background: transparent; color: var(--ink-soft); padding-left: 4px; padding-right: 4px; }
-.sp-btn:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
-.sp-tour.is-center .sp-tour-foot { flex-wrap: wrap; justify-content: center; }
-.sp-tour.is-center .sp-tour-spacer { display: none; }
-
-@media (prefers-reduced-motion: reduce) {
-  .sp-tour-spot, .sp-tour-tip, .sp-tour-bar i { transition: none; }
-  .sp-tour-spot.pulse::after, .sp-tour-hand { animation: none; }
-}
-
 /* element detail: inline error state with retry */
 .eld-error { padding: 18px 8px; text-align: center; font-size: 14px; color: var(--ink-soft); }
 .eld-error button {
@@ -822,9 +756,15 @@ body.dark-mode #page-element-detail {
 }
 
 /* Developer info (footer) */
+.about-footer::before {                              /* lotus divider */
+  content:''; display:block; width:180px; height:16px; margin:0 auto 18px;
+  background:url("lotus-divider.svg") center/contain no-repeat;
+}
+.about-footer a { font-weight:600; text-decoration:none; }
+.about-footer a:hover { text-decoration:underline; }
 .dev-info .dev-by { font-size: 12px; opacity: 0.85; }
-.dev-info .dev-company { font-size: 14px; }
-.dev-info .dev-email-line { font-size: 12px; opacity: 0.9; }
+.dev-info .dev-company { font-size: 14px; color: var(--ink); }
+.dev-info .dev-email-line { font-size: 12px; opacity: 0.95; }
 
 /* Choghadiya: "अभी" tag before the time of the slot running now */
 .pch-chogh-nowtag { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--saffron); color: #fff; margin-right: 8px; vertical-align: 1px; }
@@ -1077,6 +1017,8 @@ body.dark-mode .sec-more-btn--green:hover { color: #fff; }
 .pch-mdate-row:last-child { border-bottom: none; }
 .pch-mdate-label { font-size: 15px; font-weight: 700; color: #1E7A4A; margin-right: 4px; }
 .pch-mdate-days { font-size: 15px; font-weight: 600; color: var(--ink); }
+.pch-mdate-none { font-weight: 400; color: var(--ink-soft); }
+.pch-mdate-day.is-past { font-weight: 400; color: var(--ink-soft); }
 .pch-mdate-day.is-today { display: inline-block; min-width: 26px; padding: 0 5px; margin: 0 1px; text-align: center; line-height: 1.5; border-radius: 6px; background: var(--saffron); color: #fff; font-weight: 700; }
 body.dark-mode .pch-mdate-label { color: #6FD09A; }
 .pch-mdate-nav { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
@@ -1397,11 +1339,24 @@ body.dark-mode .profile-modal-card,
 @media (prefers-reduced-motion: reduce) { .profile-modal, #pch-location-section.is-popup { animation: none; } }
 
 
-/* Calendar: Purnima / Amavasya moon icon to the right of the date number (number stays centred) */
+/* Calendar: Purnima / Amavasya moon icon to the right of the date number (number stays centred).
+   The moon used to be absolutely positioned at left:100% of the number with a fixed 11px size. Cells are
+   fluid (≈37–51px on phones, ≈58px on desktop) while the digits and the icon are fixed-size, so on a phone
+   the icon — most visibly beside a two-digit date such as 24 — was pushed past the cell's right edge.
+   Now the number row is a 3-column grid [1fr | number | 1fr]: the equal side columns keep the number
+   exactly centred (same as every other date), and the moon lives in the right column, shrinking to the
+   space that is really left so it can never leave its cell. On desktop there is room for the full 11px,
+   so nothing changes there. */
 .pch-cal-num { position: relative; display: inline-block; }
+.pch-cal-num.has-moon {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center; width: 100%;
+}
+.pch-cal-num.has-moon > .pch-cal-d { grid-column: 2; }
 .pch-cal-moon {
-  position: absolute; left: 100%; top: 50%; margin: -5.5px 0 0 3px;
-  width: 11px; height: 11px; border-radius: 50%; display: block; pointer-events: none;
+  grid-column: 3; justify-self: start;
+  margin-left: 3px; width: 11px; max-width: calc(100% - 3px); min-width: 5px;
+  height: auto; aspect-ratio: 1 / 1; border-radius: 50%; display: block; pointer-events: none;
 }
 .pch-cal-moon.is-purnima {
   background: radial-gradient(circle at 36% 32%, #FFF1B8 0%, #FFD24A 38%, #E9A21B 78%, #C98410 100%);
@@ -1441,3 +1396,104 @@ body.dark-mode .pch-cal-moon.is-amavasya { background: radial-gradient(circle at
 .vrat-meta { display: none; margin-top: 6px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--saffron-pale); font-size: 12px; line-height: 1.5; color: var(--ink); }
 .vrat-has-meta.open .vrat-meta { display: block; }
 .vrat-meta-note { margin-top: 4px; font-weight: 600; color: var(--ink-soft); }
+
+/* About Us: Developer card (founder + company info) */
+.dev-card { padding: 20px 16px 16px; }
+.dev-founder { display: flex; flex-direction: column; align-items: center; text-align: center; padding-bottom: 18px; }
+.dev-photo { width: 96px; height: 96px; border-radius: 50%; padding: 4px; background: var(--cream-dark); box-shadow: 0 0 0 1.5px var(--brass); overflow: hidden; }
+.dev-photo img { display: block; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; object-position: center 20%; background: #000; }
+.dev-name { margin-top: 14px; font-family: var(--serif); font-size: 22px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; color: var(--ink); }
+.dev-role { margin-top: 4px; font-family: var(--serif); font-size: 14.5px; font-weight: 600; color: var(--ink-soft); }
+.dev-social { display: flex; gap: 10px; margin-top: 14px; }
+.dev-social a { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid var(--border); background: var(--cream); color: var(--ink-soft); transition: color .15s, border-color .15s, background .15s, transform .15s; }
+.dev-social a svg { width: 17px; height: 17px; }
+.dev-social a:hover, .dev-social a:focus-visible { color: var(--saffron); border-color: var(--brass); background: var(--saffron-pale); transform: translateY(-1px); }
+/* Company information (below Founder) */
+.dev-company { position: relative; padding-top: 22px; text-align: center; }
+.dev-company::before { content: ''; position: absolute; top: 0; left: 12%; right: 12%; height: 1px; background: linear-gradient(90deg, transparent, var(--brass) 50%, transparent); opacity: .7; }
+.dev-company-eyebrow { font-size: 10.5px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase; color: var(--brass); }
+.dev-company-name { margin: 8px auto 0; font-family: var(--serif); font-size: clamp(21px, 6.4vw, 26px); font-weight: 600; letter-spacing: .005em; line-height: 1.2; color: var(--ink); text-wrap: balance; }
+.dev-company-cin { margin-top: 10px; font-size: 11.5px; font-weight: 500; letter-spacing: .06em; color: var(--ink-soft); }
+.dev-company-cin span { font-variant-numeric: tabular-nums; letter-spacing: .08em; color: var(--ink); }
+.dev-company-list { list-style: none; margin: 22px 0 0; padding: 0; text-align: left; }
+.dev-company-row:last-child { padding-bottom: 2px; }
+.dev-company-row { display: flex; align-items: flex-start; gap: 14px; padding: 14px 2px; border-top: 1px solid var(--border); }
+.dev-company-icon { flex: none; width: 18px; height: 18px; margin-top: 2px; color: var(--brass); }
+.dev-company-icon svg { display: block; width: 100%; height: 100%; }
+.dev-company-text { min-width: 0; flex: 1; }
+.dev-company-label { font-size: 14px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); }
+.dev-company-value { margin-top: 3px; font-size: 13px; font-weight: 400; line-height: 1.5; color: var(--ink); overflow-wrap: anywhere; }
+.dev-company-value a { color: var(--saffron); font-weight: 400; text-decoration: none; border-bottom: 1px solid transparent; transition: border-color .15s, color .15s; }
+.dev-company-value a:hover, .dev-company-value a:focus-visible { border-bottom-color: currentColor; }
+body.dark-mode .dev-company-value a { color: #B9B6F5; }
+@media (max-width: 420px) {
+  .dev-name { font-size: 20px; }
+}
+
+
+/* Compact settings-page header (Account, App, Contact, About) */
+.settings-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+}
+.settings-header .profile-back {
+  position: static; top: auto; left: auto; flex-shrink: 0;
+  background: var(--white); border: 1px solid var(--border);
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+.settings-header .profile-back svg { stroke: var(--ink); }
+.settings-header .sh-title {
+  margin: 0; flex: 1; min-width: 0;
+  font-family: var(--sans, inherit); font-size: 16px; font-weight: 600;
+  line-height: 1.3; letter-spacing: 0.01em; color: #25226A;
+  text-align: center;
+  text-decoration: underline; text-underline-offset: 5px; text-decoration-thickness: 1.5px;
+}
+/* invisible spacer equal to back-button width so the title is truly centred */
+.settings-header::after { content: ''; width: 38px; height: 38px; flex-shrink: 0; }
+
+/* Footer: the card divider rule (.dev-company::before) leaked onto the footer's company name; remove only that extra line */
+.about-footer .dev-company::before { content: none; display: none; }
+body.dark-mode .settings-header .sh-title { color: #B9B6F5; }
+
+/* Contact Us: compact "Copy" button on the same row, right-aligned */
+.contact-copy-row { display: flex; align-items: center; gap: 12px; }
+.contact-copy-row .contact-email-link { flex: 1; min-width: 0; }
+.copy-inline-btn {
+  width: auto; margin-top: 0; flex-shrink: 0; align-self: center;
+  padding: 8px 16px; border-radius: 10px; font-size: 13px;
+}
+.about-card .copy-email-note:empty { display: none; }
+.about-card .copy-email-note { margin-top: 10px; min-height: 0; }
+/* Grievance Officer card: the copy note follows the row, so drop the row's divider line */
+.about-card .about-row:has(+ .copy-email-note) { border-bottom: none; padding-bottom: 0; }
+
+/* Contact Us: icon-only action buttons (mail / call) */
+.icon-action-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; padding: 0; text-decoration: none; box-sizing: border-box;
+}
+.icon-action-btn svg { width: 20px; height: 20px; }
+
+/* Icon-only actions: no box, just a properly sized icon (tap area kept) */
+.icon-action-btn,
+.icon-action-btn:hover,
+.icon-action-btn:active {
+  background: none; border: none; box-shadow: none; border-radius: 0;
+  width: 44px; height: 44px; color: var(--saffron);
+}
+.icon-action-btn:hover { color: var(--brass); }
+.icon-action-btn:active { transform: scale(0.92); }
+.icon-action-btn svg { width: 28px; height: 28px; }
+
+/* Grievance Officer: founder photo inside the existing icon box (same size and shape) */
+.about-row-photo { overflow: hidden; padding: 0; }
+.about-row-photo img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+
+/* Contact Us: Grievance Officer row merged into the "Reach us at" card */
+.contact-row-sep { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.contact-email-icon.has-photo { overflow: hidden; padding: 0; background: none; }
+.contact-email-icon.has-photo img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+
+/* Grievance Officer: name and number on one line (wrap only at spaces if the screen is very narrow) */
+.contact-value-inline { font-size: 14px; word-break: normal; overflow-wrap: break-word; }
