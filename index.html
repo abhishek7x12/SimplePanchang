@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" href="favicon.png">
 <link rel="shortcut icon" href="favicon.png" type="image/png">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Figtree:wght@400;500;600;700&family=Tiro+Devanagari+Hindi&family=Hind:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20261123h">
+<link rel="stylesheet" href="styles.css?v=20261127i">
 </head>
 <body>
 
@@ -40,10 +40,6 @@
       <button class="settings-item" onclick="closeSettings();showAppSettings()">
         <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
         App Settings
-      </button>
-      <button class="settings-item" onclick="closeSettings();spStartTour()">
-        <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
-        App Tour
       </button>
       <button class="settings-item" onclick="closeSettings();showContactUs()">
         <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
@@ -149,7 +145,7 @@
       </div>
 
         <!-- Geo & Timestamp: one row, three sections — location (left) | time | Change (right); equal gaps around both separators -->
-        <div class="about-section">
+        <div class="about-section" style="margin-top:10px;">
           <div class="about-card pch-gt">
             <div class="pch-gt-row">
               <div class="pch-gt-sec pch-gt-sec--loc">
@@ -172,6 +168,7 @@
             <!-- kept for panchang.js (it still writes the selected date here); the calendar above already shows the date -->
             <div id="pch-cal-date" hidden></div>
           </div>
+          <div class="eld-note">Note: पंचांग की गणना आपके द्वारा चुने गए स्थान, समय व दिनांक के आधार पर की गई है।</div>
         </div>
 
         <!-- Date -->
@@ -198,6 +195,8 @@
               <div class="pch-item pch-tap" data-eld="yoga" role="button" tabindex="0" aria-label="योग — विस्तृत समय-रेखा देखें"><div class="pch-label">योग</div><div class="pch-value" id="pch-yoga"></div></div>
               <div class="pch-item pch-tap" data-eld="karana" role="button" tabindex="0" aria-label="करण — विस्तृत समय-रेखा देखें"><div class="pch-label">करण</div><div class="pch-value" id="pch-karana"></div></div>
               <div class="pch-item pch-bad"><div class="pch-label">दिशा शूल</div><div class="pch-value" id="pch-disha-shool"></div></div>
+              <div class="pch-item pch-tap" id="pch-panchak-item" data-eld="panchak" role="button" tabindex="0" aria-label="पंचक — विस्तृत समय-रेखा देखें"><div class="pch-label">पंचक</div><div class="pch-value" id="pch-panchak"></div></div>
+              <div class="pch-item pch-tap" id="pch-vinchudo-item" data-eld="vinchudo" role="button" tabindex="0" aria-label="विंचुडो — विस्तृत समय-रेखा देखें"><div class="pch-label">विंचुडो</div><div class="pch-value" id="pch-vinchudo"></div></div>
               <div class="pch-item pch-tap" data-eld="chandra" role="button" tabindex="0" aria-label="चंद्र राशि — विस्तृत समय-रेखा देखें"><div class="pch-label">चंद्र राशि</div><div class="pch-value" id="pch-chandra-rashi"></div></div>
               <div class="pch-item pch-tap" data-eld="surya" role="button" tabindex="0" aria-label="सूर्य राशि — विस्तृत समय-रेखा देखें"><div class="pch-label">सूर्य राशि</div><div class="pch-value" id="pch-surya-rashi"></div></div>
               <div class="pch-item pch-tap" data-eld="chandrabal" role="button" tabindex="0" aria-label="चंद्रबल — विस्तृत समय-रेखा देखें"><div class="pch-label">चंद्रबल</div><div class="pch-value" id="pch-chandrabalam"></div></div>
@@ -319,7 +318,7 @@
           <div style="padding:10px 2px; color:var(--ink-soft); font-size:13px;">लोड हो रहा है…</div>
         </div>
       </div>
-      <div class="about-footer" data-footer="disclaimer"></div>
+      <div class="about-footer" data-footer="plain"></div>
     </div>
   </div>
 
@@ -344,7 +343,7 @@
           <div style="padding:10px 2px; color:var(--ink-soft); font-size:13px;">लोड हो रहा है…</div>
         </div>
       </div>
-      <div class="about-footer" data-footer="disclaimer"></div>
+      <div class="about-footer" data-footer="plain"></div>
     </div>
   </div>
 
@@ -371,7 +370,7 @@
         <div class="about-section-title">रात्रि का चौघड़िया</div>
         <div class="about-card" id="chogh-full-night"></div>
       </div>
-      <div class="about-footer" data-footer="disclaimer"></div>
+      <div class="about-footer" data-footer="plain"></div>
     </div>
   </div>
 
@@ -394,61 +393,86 @@
         <div class="about-card eld-card" id="eld-timeline"></div>
         <div class="eld-note" id="eld-note"></div>
       </div>
-      <div class="about-footer" data-footer="disclaimer"></div>
+      <div class="about-footer" data-footer="plain"></div>
     </div>
   </div>
 
   <!-- ── ABOUT US PAGE ── -->
   <div class="about-page" id="page-about" style="display:none;">
-    <div class="about-banner">
+    <div class="settings-header">
       <button class="profile-back" onclick="showPanchang()" aria-label="वापस जाएँ">
         <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
       </button>
-      <div class="ab-mandala"><img src="favicon.png" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"></div>
-      <div class="ab-title">Simple Panchang</div>
-      <div class="ab-sub">Daily Hindu Vaidik Panchang</div>
+      <h1 class="sh-title">Know who we are</h1>
     </div>
     <div class="about-body">
-      <div class="about-section">
-        <div class="about-section-title">About Simple Panchang</div>
-        <div class="about-card">
-          <p>Simple Panchang gives you today's Hindu Vaidik Panchang for your exact location, with the Tithi, Nakshatra and auspicious and inauspicious timings in one clean view.</p>
-          <p>It is built to be fast, readable and free of clutter, so you can check the day in a few seconds.</p>
-        </div>
-      </div>
+      <div class="about-section" id="about-developer">
+        <div class="about-card dev-card">
+          <div class="dev-founder">
+            <div class="dev-photo"><img src="abhishek.jpg" alt="Abhishek Dadhich" width="96" height="96" loading="lazy"></div>
+            <div class="dev-name">Abhishek Dadhich</div>
+            <div class="dev-role">Founder &amp; Director</div>
+            <div class="dev-social" aria-label="Social links">
+              <a href="https://www.linkedin.com/in/ad-tcpl/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.36V9h3.41v1.56h.05c.47-.9 1.63-1.85 3.36-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z"/></svg>
+              </a>
+              <a href="https://x.com/abhishektcpl" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.24 2.25h3.31l-7.23 8.26 8.5 11.24h-6.66l-5.21-6.82-5.97 6.82H1.67l7.73-8.84L1.25 2.25h6.83l4.71 6.23 5.45-6.23zm-1.16 17.52h1.83L7.08 4.13H5.12l11.96 15.64z"/></svg>
+              </a>
+              <a href="https://www.facebook.com/profile.php?id=100068642541407" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.69.24 2.69.24v2.97h-1.51c-1.49 0-1.96.93-1.96 1.89v2.25h3.33l-.53 3.49h-2.8V24C19.61 23.1 24 18.1 24 12.07z"/></svg></a>
+            </div>
+          </div>
 
-      <div class="about-section">
-        <div class="about-section-title">What it shows</div>
-        <div class="about-card">
-          <div class="about-row">
-            <div class="about-row-icon">🌙</div>
-            <div class="about-row-text">
-              <div class="about-row-label">Panchang elements</div>
-              <div class="about-row-desc">Tithi, Nakshatra, Yoga, Karana, Rashi, Chandrabal and Tarabal, calculated for your place and time.</div>
-            </div>
-          </div>
-          <div class="about-row">
-            <div class="about-row-icon">⏱️</div>
-            <div class="about-row-text">
-              <div class="about-row-label">Muhurat and Choghadiya</div>
-              <div class="about-row-desc">Auspicious and inauspicious periods, with separate day and night Choghadiya.</div>
-            </div>
-          </div>
-          <div class="about-row">
-            <div class="about-row-icon">🪔</div>
-            <div class="about-row-text">
-              <div class="about-row-label">Vrat, Tyohar and holidays</div>
-              <div class="about-row-desc">Upcoming fasts, festivals and public holidays in one list.</div>
-            </div>
-          </div>
-        </div>
-      </div>
+          <div class="dev-company">
+            <div class="dev-company-eyebrow">Developed by</div>
+            <div class="dev-company-name">Trovato Communications Private Limited</div>
+            <div class="dev-company-cin">CIN <span>U62099RJ2024PTC096115</span></div>
 
-      <div class="about-section">
-        <div class="about-section-title">Version</div>
-        <div class="about-card">
-          <p><strong>Version 3.4.5</strong></p>
-          <p>Released on 23 November 2026</p>
+            <ul class="dev-company-list">
+              <li class="dev-company-row">
+                <span class="dev-company-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></svg></span>
+                <div class="dev-company-text">
+                  <div class="dev-company-label">Registered Office</div>
+                  <div class="dev-company-value">C/o Veer Bhawan, Behind Jai Mandir Cinema, College Road, Beawar - 305901 (Raj.)</div>
+                </div>
+              </li>
+              <li class="dev-company-row">
+                <span class="dev-company-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 8 18-8-4.5L4 21z"/></svg></span>
+                <div class="dev-company-text">
+                  <div class="dev-company-label">Additional Operations</div>
+                  <div class="dev-company-value">Jaipur - 302004 (Raj.)</div>
+                </div>
+              </li>
+              <li class="dev-company-row">
+                <span class="dev-company-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.5 2.5 3.8 5.5 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.5-3.8-9S9.5 5.5 12 3z"/></svg></span>
+                <div class="dev-company-text">
+                  <div class="dev-company-label">Website</div>
+                  <div class="dev-company-value"><a href="https://samajsneh.com/" target="_blank" rel="noopener noreferrer">samajsneh.com</a></div>
+                </div>
+              </li>
+              <li class="dev-company-row">
+                <span class="dev-company-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 8.5 6.5L20.5 7"/></svg></span>
+                <div class="dev-company-text">
+                  <div class="dev-company-label">Email</div>
+                  <div class="dev-company-value"><a href="mailto:trovatoindia@protonmail.com">trovatoindia@protonmail.com</a></div>
+                </div>
+              </li>
+              <li class="dev-company-row">
+                <span class="dev-company-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h3.5l1.6 4-2.2 1.4a11 11 0 0 0 6.7 6.7L16 14l4 1.6V19a2 2 0 0 1-2 2A15 15 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></span>
+                <div class="dev-company-text">
+                  <div class="dev-company-label">Phone</div>
+                  <div class="dev-company-value"><a href="tel:+919461144770">+91-9461144770</a></div>
+                </div>
+              </li>
+              <li class="dev-company-row">
+                <span class="dev-company-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5.5c0 4.4-3 8-7 9.5-4-1.5-7-5.1-7-9.5V6z"/><path d="m9 12 2.2 2.2L15.5 10"/></svg></span>
+                <div class="dev-company-text">
+                  <div class="dev-company-label">Grievance Officer</div>
+                  <div class="dev-company-value">Abhishek Dadhich, <a href="tel:+919828663770">98286 63770</a></div>
+                </div>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
 
@@ -458,13 +482,11 @@
 
   <!-- ── ACCOUNT SETTINGS PAGE ── -->
   <div class="about-page" id="page-accountsettings" style="display:none;">
-    <div class="about-banner">
+    <div class="settings-header">
       <button class="profile-back" onclick="showPanchang()" aria-label="वापस जाएँ">
         <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
       </button>
-      <div class="ab-mandala">🔐</div>
-      <div class="ab-title">Account Settings</div>
-      <div class="ab-sub">Your profile &amp; data</div>
+      <h1 class="sh-title">Your profile and data</h1>
     </div>
     <div class="about-body">
       <div class="about-section">
@@ -494,13 +516,11 @@
 
   <!-- ── APP SETTINGS PAGE ── -->
   <div class="about-page" id="page-appsettings" style="display:none;">
-    <div class="about-banner">
+    <div class="settings-header">
       <button class="profile-back" onclick="showPanchang()" aria-label="वापस जाएँ">
         <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
       </button>
-      <div class="ab-mandala">⚙️</div>
-      <div class="ab-title">App Settings</div>
-      <div class="ab-sub">Customize your experience</div>
+      <h1 class="sh-title">Customize your experience</h1>
     </div>
     <div class="about-body">
       <div class="about-section">
@@ -525,36 +545,45 @@
 
   <!-- ── CONTACT US PAGE ── -->
   <div class="about-page" id="page-contactus" style="display:none;">
-    <div class="about-banner">
+    <div class="settings-header">
       <button class="profile-back" onclick="showPanchang()" aria-label="वापस जाएँ">
         <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
       </button>
-      <div class="ab-mandala">✉️</div>
-      <div class="ab-title">Contact Us</div>
-      <div class="ab-sub">We'd love to hear from you</div>
+      <h1 class="sh-title">We'd love to hear from you</h1>
     </div>
     <div class="about-body">
       <div class="about-section">
-        <div class="about-section-title">Email</div>
+        <div class="about-section-title">Reach us at</div>
         <div class="contact-email-card">
-          <a class="contact-email-link" href="mailto:trovatoindia@protonmail.com">
-            <div class="contact-email-icon">📧</div>
-            <div class="contact-email-text">
-              <div class="contact-email-label">Reach us at</div>
-              <div class="contact-email-value">trovatoindia@protonmail.com</div>
-            </div>
-          </a>
-          <button class="copy-email-btn" onclick="copyContactEmail()">📋 Copy Email Address</button>
-          <div class="copy-email-note" id="copy-email-note"></div>
+          <div class="contact-copy-row">
+            <a class="contact-email-link" href="mailto:trovatoindia@protonmail.com">
+              <div class="contact-email-icon">📧</div>
+              <div class="contact-email-text">
+                <div class="contact-email-label">Email</div>
+                <div class="contact-email-value">trovatoindia@protonmail.com</div>
+              </div>
+            </a>
+            <a class="copy-email-btn copy-inline-btn icon-action-btn" href="mailto:trovatoindia@protonmail.com" aria-label="Send email"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 8.5 6.5L20.5 7"/></svg></a>
+          </div>
+          <div class="contact-copy-row contact-row-sep">
+            <a class="contact-email-link" href="tel:+919828663770">
+              <div class="contact-email-icon has-photo"><img src="abhishek.jpg" alt="Abhishek Dadhich" loading="lazy"></div>
+              <div class="contact-email-text">
+                <div class="contact-email-label">Grievance Officer</div>
+                <div class="contact-email-value contact-value-inline">Abhishek Dadhich, 98286 63770</div>
+              </div>
+            </a>
+            <a class="copy-email-btn copy-inline-btn icon-action-btn" href="tel:+919828663770" aria-label="Call Grievance Officer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h3.5l1.6 4-2.1 1.4a11 11 0 0 0 5.6 5.6L15 12.9l4 1.6V18a2 2 0 0 1-2 2A14 14 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></a>
+          </div>
         </div>
       </div>
 
       <div class="about-section">
-        <div class="about-section-title">Need Help, Submit a Query</div>
-        <div class="about-card">
-          <p style="margin-bottom:12px;">Facing an issue or have a question about the Panchang? Describe it below and we'll get back to you.</p>
-          <textarea class="help-textarea" id="help-query-text" placeholder="Type your question or issue here..."></textarea>
-          <button class="help-submit-btn" onclick="submitHelpQuery()">Submit Query</button>
+        <div class="about-section-title">कोई प्रश्न या सुझाव?</div>
+        <div class="about-card" lang="hi">
+          <p style="margin-bottom:12px;">यदि आपके पास इस ऐप से संबंधित कोई प्रश्न है, कोई सुझाव है या आप चाहते हैं कि कोई महत्वपूर्ण फीचर इस ऐप में जोड़ा जाए, तो कृपया हमें बताएं।</p>
+          <textarea class="help-textarea" id="help-query-text" placeholder="अपना प्रश्न या सुझाव यहाँ लिखें।"></textarea>
+          <button class="help-submit-btn" onclick="submitHelpQuery()">अपना प्रश्न या सुझाव हम तक पहुंचाएं</button>
           <div class="help-note" id="help-query-note"></div>
         </div>
       </div>
@@ -670,7 +699,6 @@
     </div>
   </div>
 
-<script src="panchang.js?v=20261123k"></script>
-<script src="tour.js?v=20261123f"></script>
+<script src="panchang.js?v=20261127d"></script>
 </body>
 </html>
